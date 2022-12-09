@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:widget="http://www.netvibes.com/ns/">
+
+<head>
+	<title>LCD Change Action</title>
+	<link rel="stylesheet" type="text/css" href="http://uwa.netvibes.com/lib/c/UWA/assets/css/standalone.css" />
+	<script src="../LCDLIB/scripts/jquery-1.11.1.js"></script>
+	<link rel="webappsBaseUrl" href="../../" />
+	<script src="../../AMDConf.js"></script>
+	<!-- <widget:preferences>
+		<widget:preference name="dataMethod" type="list" label="Request Type" defaultValue="GET">
+			<widget:option label="Get" value="Get" />
+		</widget:preference>
+	</widget:preferences> -->
+	<script>
+		require(["LCD/LCD_PLM_SAP_Integration/assets/scripts/main"], function (myWidget) {
+			widget.addEvent("onLoad", myWidget.onLoad);
+			widget.addEvent("onRefresh", myWidget.onRefresh);
+		});
+	</script>
+
+<body>
+</body>
+
+</html>
