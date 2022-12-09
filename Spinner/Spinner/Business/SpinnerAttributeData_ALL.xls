@@ -1,0 +1,4 @@
+Attribute Name	Registry Name	Scope	Owner	Type	Description	Default	"Ranges (use ""|"" delim)"	Multiline (boolean)	Hidden (boolean)	Dimension	Max Length (int)	ResetonClone (boolean)	ResetonRevision (boolean)	Icon File	ValueType	CustomerExposition(ReadOnly)	Protection(ReadOnly)
+LCD_Process_Status_Flag	LCD_Process_Status_Flag			string	LCD_Process_Status_Flag			FALSE	FALSE		0	FALSE	FALSE			Programmer	Free
+LCD_Reason_for_failure	LCD_Reason_for_failure			string	LCD_Reason_for_failure			TRUE	FALSE		0	FALSE	FALSE			Programmer	Free
+LCD_CA_ID	LCD_CA_ID			string	LCD_CA_ID			FALSE	FALSE		0	FALSE	FALSE			Programmer	Free
