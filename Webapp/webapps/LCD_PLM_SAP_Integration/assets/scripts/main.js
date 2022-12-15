@@ -9,6 +9,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
   "css!LCD/LCDLIB/styles/materialdesignicons.min.css",
   "css!LCD/LCD_PLM_SAP_Integration/assets/styles/style.css"
 ], function ($,Vue,PlatformAPI,WAFData, Vuetify) {
+  
   Vue.use(Vuetify, {});
   var myWidget = {
     onLoad: function () {
@@ -17,16 +18,17 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
 				for (var i = 0; i < apps.length; i++) {
 					if (apps[i]["propertyKey"] === "app.urls.myapps") {
 						var u = new URL(apps[i]["propertyValue"]);
-						_3dspaceUrl = u.href;						
+						_3dspaceUrl = u.href;
 						break;
 					}
 				}
         console.log(_3dspaceUrl);
-      myWidget.callWebservice();
-      myWidget.ab();
-      myWidget.cvdt();
+      myWidget.callWebservice1();
+      myWidget.setVueTemplate();
+      myWidget.loadData();
+      // myWidget.callWebservice2();
     },
-    ab: () => {
+    setVueTemplate: () => {
       var $body = $(widget.body);
       var c = `<div id='app'>
       <v-app id="inspire">
@@ -34,6 +36,9 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
     <div id="title">
       <h1>3DX-SAP Integration</h1>
     </div>
+    <!--<<v-container id="div" v-bind="get">
+    {{maDetails}}
+    </v-container>-->
     <v-main>
       <div id="tabdiv">
         <v-tabs
@@ -44,7 +49,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           hide-slider
           color="black"
         >
-          <v-tab :href="'#tab-5'" active-class="grey lighten-2">
+          <v-tab :href="'#tab-5'" active-class="teal lighten-4">
             All
           </v-tab>
           <v-tab :href="'#tab-1'" active-class="yellow lighten-2">
@@ -106,6 +111,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 show-select
                 class="elevation-1"
                 elevation="8"
+                checkbox-color="blue"
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -389,6 +395,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 show-select
                 class="elevation-1"
                 elevation="8"
+                checkbox-color="blue"
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -672,6 +679,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 show-select
                 class="elevation-1"
                 elevation="8"
+                checkbox-color="blue"
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -959,6 +967,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 show-select
                 class="elevation-1"
                 elevation="8"
+                checkbox-color="blue"
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -1233,8 +1242,9 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 >Search</v-btn
               >
             </v-app-bar>
-            <v-container fluid style="height: 2000px; overflow: auto;">
+            <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
+                display: block
                 v-model="selected"
                 :headers="headers1"
                 :items="itemsWithSno"
@@ -1242,46 +1252,23 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 :search="search"
                 hide-default-footer
                 fixed-header
-                height="800px"
+                height= "auto"
                 show-select
-                class="elevation-1"
+                class="text-truncate elevation-1"
                 elevation="8"
-                calculate-widths="true"
                 checkbox-color="blue"
                 resizable="true"
               >
+              <!-- <template v-slot:item.caCompletedTime="{ item }">
+                <div class="col-8 text-truncate">
+                {{item.caCompletedTime}}
+                </div>
+                </template> -->
                 <template v-slot:item.status="{ item }">
                   <v-chip :color="getColor(item.status)">
                     {{ item.status }}
                   </v-chip>
                 </template>
-                <!-- <template v-slot:item="i"> -->
-                <!-- Since v-slot:item overrides how each row is rendered, I rebuild the row starting from <tr>. This allows me to add a class to <tr> based on any condition I want (in this case, the calorie count) -->
-                <!-- <tr>
-            <td>
-                <label class="form-checkbox">
-                    <input type="checkbox" :value="i.status" v-model="selected">
-                    <i class="form-icon"></i>
-                </label>
-            </td>
-            <td>{{i.item.sno}}</td>
-            <td>{{i.item.maName}}</td>
-            <td :class="{
-                      'red lighten-2': i.item.status === 'Failed', 
-                      'green lighten-2': i.item.status ==='Success',
-                      'yellow lighten-2': i.item.status ==='Waiting',
-                      'blue lighten-2': i.item.status ==='In Work',
-                      }">{{i.item.status}}</td>
-            <td>{{i.item.revision}}</td>
-            <td>{{i.item.title}}</td>
-            <td>{{i.item.maturity}}</td>
-            <td>{{i.item.description}}</td>
-            <td>{{i.item.caCompletedTime}}</td>
-            <td>{{i.item.caName}}</td>
-            <td>{{i.item.SapFeedbackTimeStamp}}</td>
-            <td>{{i.item.SapFeedbackMessage}}</td>
-          </tr> -->
-                <!-- </template> -->
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
                   <v-menu offset-y :close-on-content-click="false">
@@ -1292,7 +1279,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                         </v-icon>
                       </v-btn>
                     </template>
-                    <div style="background-color: white; width: 280px">
+                    <div style="background-color: white; width: 250px">
                       <v-text-field
                         id="colfilter"
                         full-width
@@ -1536,36 +1523,71 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
 						</div>`;
       $body.html(c);
     },
-    callWebservice: function(){
+    callWebservice1: function(){
       var _this = this;
-      let url = widget.getUrl();
-            myWidget.iconUrl = url.substring(0, url.lastIndexOf("/"));
-            let dropIconUrl = myWidget.iconUrl + "/images/drop.png";
-      WAFData.authenticatedRequest(_3dspaceUrl + "/lucid/ma/getma", {
+      WAFData.authenticatedRequest(_3dspaceUrl + "/LCDSAPIntegrationModeler/LCDSAPIntegrationService/getMA", {
         method: "GET",
         accept: "application/json",
         onComplete: function(dataResp) {
           var data = JSON.parse(dataResp);
-          _this.vueapp.madata1 = data;
-          console.log("------------>>>" + _this.vueapp.madata1);
-
-          var data1 = JSON.stringify(data);
-          var data2 = JSON.parse(data1);
-          _this.madata1 = data1;
-          console.table(data2);
-          console.log("--------++++++---->>>" + _this.madata1);
+          _this.vueapp.details = data;
+          _this.vueapp.filterData = data;
+          // console.log("------------>>>" + _this.vueapp.details);
+          
+          // var data1 = JSON.stringify(data);
+          // console.log("DATA1 =" +data1);
+          // var data2 = JSON.parse(data1);
+          // _this.details = data1;
+          // console.table(data2);
+          // console.log("--------++++++---->>>" + _this.details);
         },
         onFailure: function(error) {
           console.log(error);
         }
       });
     },
-    cvdt: function () {
+    callWebservice2: function(){
+      debugger
+      // var payloadDetails;
+      var _this = this;
+      var Ca_ID = _this.vueapp.selected[0].caID;
+      var BOM_Comp_ID = _this.vueapp.selected[0].maID;
+      var ma_name = _this.vueapp.selected[0].maName;
+      var Connection_ID = _this.vueapp.selected[0].ConnectionID;
+
+      var objSelected = {
+                          CAID :Ca_ID,
+                          BOMComponentID:BOM_Comp_ID,
+                          ConnectionID:Connection_ID,
+                          MaName: ma_name
+                        };
+                      console.log(objSelected);
+      WAFData.authenticatedRequest(_3dspaceUrl + "/LCDSAPIntegrationModeler/LCDPushToSAPServices/PushToSAP", {
+        method: "POST",
+        accept: "application/json",
+        crossOrigin: true,
+        timeout: 7000,
+        data : JSON.stringify(objSelected),
+        headers: {
+          'Content-Type': 'application/json'
+          },
+        onComplete: function(myJson) {
+          var returnData = JSON.parse(myJson);
+          var returnData1 = JSON.stringify(returnData);
+          _this.vueapp.responseData = returnData;
+          console.log("responce data:" + returnData1);
+        },
+        onFailure: function(error) {
+          console.log(error);
+        }
+      });
+    },
+    loadData: function () {
       var vueapp = new Vue({
         el: "#app",
         vuetify: new Vuetify(),
-        data() {
-          return {
+        data: {
+          responseData:[],
             type: 1,
             active: true,
             maName: "",
@@ -1583,6 +1605,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             singleSelect: false,
             search: "",
             globalSearch: "",
+            details: [],
             selected: [],
             headers1: [
               {
@@ -1691,118 +1714,24 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 sortable: false
               }
             ],
-            details: [
-              {
-                maName: "Test1",
-                status: "Success",
-                revision: "02",
-                title: "Test-001",
-                maturity: "M1",
-                description: "Business type object",
-                caCompletedTime: "11-18-2022 10:00:00 AM",
-                caName: "CA 001",
-                SapFeedbackTimeStamp: "11-18-2022 10:00:00 AM",
-                SapFeedbackMessage: "Success"
-              },
-              {
-                maName: "Test2",
-                status: "Waiting",
-                revision: "03",
-                title: "Test-002",
-                maturity: "M2",
-                description: "Business type object",
-                caCompletedTime: "11-18-2022 10:00:00 AM",
-                caName: "CA 002",
-                SapFeedbackTimeStamp: "",
-                SapFeedbackMessage: ""
-              },
-              {
-                maName: "Test3",
-                status: "Failed",
-                revision: "04",
-                title: "Test-003",
-                maturity: "M2",
-                description: "Business type object",
-                caCompletedTime: "11-18-2022 10:00:00 AM",
-                caName: "CA 003",
-                SapFeedbackTimeStamp: "11-18-2022 10:00:00 AM",
-                SapFeedbackMessage: "Failed with error 404"
-              },
-              {
-                maName: "Test4",
-                status: "In Work",
-                revision: "04",
-                title: "Test-004",
-                maturity: "M2",
-                description: "Business type object",
-                caCompletedTime: "11-18-2022 10:00:00 AM",
-                caName: "CA 003",
-                SapFeedbackTimeStamp: "",
-                SapFeedbackMessage: ""
-              },
-              {
-                maName: "Test5",
-                status: "Waiting",
-                revision: "03",
-                title: "Test-005",
-                maturity: "M2",
-                description: "Business type object",
-                caCompletedTime: "11-18-2022 10:00:00 AM",
-                caName: "CA 002",
-                SapFeedbackTimeStamp: "",
-                SapFeedbackMessage: ""
-              },
-              {
-                maName: "Test6",
-                status: "Failed",
-                revision: "04",
-                title: "Test-006",
-                maturity: "M2",
-                description: "Business type object",
-                caCompletedTime: "11-18-2022 10:00:00 AM",
-                caName: "CA 003",
-                SapFeedbackTimeStamp: "11-18-2022 10:00:00 AM",
-                SapFeedbackMessage: "Failed with error 502"
-              },
-              {
-                maName: "Test7",
-                status: "In Work",
-                revision: "04",
-                title: "Test-007",
-                maturity: "M2",
-                description: "Business type object",
-                caCompletedTime: "11-18-2022 10:00:00 AM",
-                caName: "CA 003",
-                SapFeedbackTimeStamp: "",
-                SapFeedbackMessage: ""
-              },
-              {
-                maName: "Test8",
-                status: "Success",
-                revision: "02",
-                title: "Test-008",
-                maturity: "M1",
-                description: "Business type object",
-                caCompletedTime: "11-18-2022 10:00:00 AM",
-                caName: "CA 001",
-                SapFeedbackTimeStamp: "11-18-2022 10:00:00 AM",
-                SapFeedbackMessage: "Success"
-              }
-            ],
             time: "",
             date: ""
-          };
         },
         computed: {
+          get(){
+            const a = this.selected.map((obj) => [obj.maName, obj.maID, obj.caID, obj.ConnectionID]);
+            this.maDetails = a;
+            console.log(a);
+          },
           //checkbox method to enable only failed ones
           onlyFailed() {
-            return this.filteredData.map(x => ({
+            return this.filterData.map(x => ({
               ...x,
               isSelectable: x.status == "Failed"
             }));
           },
           itemsWithSno() {
-            return this.filteredData.map((d, index) => ({ ...d, sno: index + 1 }));
+            return this.onlyFailed.map((d, index) => ({ ...d, sno: index + 1 }));
           },
           itemsWithSno1() {
             return this.waitingTable.map((d, index) => ({ ...d, sno: index + 1 }));
@@ -1916,27 +1845,39 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             );
           },
           rePush() {
-            // alert("confirm?");
-            this.selected.map(x => {
-              x.status = "In Work";
-              this.filteredData.push(x);
+            debugger
+            myWidget.callWebservice2();
+
+            this.filteredData.map( x => {
+              this.selected.map( y =>{
+                if(x.maID == y.maID) {
+                  x.status = "In Work";
+                }
+              }
+              )
+            }
+            )
+            // this.filteredData.map(x => {
+            //   x.status = "In Work";
+              // this.filteredData.push(x);
               // this.failedTable.map(x);
               // const index = this.employees.indexOf(this.se[i]);
               // this.failedTable.splice(x, 1);
-            });
-            for (var i = 0; i < this.selected.length; i++) {
-              const index = this.failedTable.indexOf(this.selected[i]);
-              this.failedTable.splice(index, 1);
-            }
+            // });
+            // for (var i = 0; i < this.selected.length; i++) {
+            //   const index = this.failedTable.indexOf(this.selected[i]);
+            //   this.failedTable.splice(index, 1);
+            // }
           },
           clear() {
+
             this.filterData = this.details;
           },
           searchTable() {
             if (this.globalSearch === "" || this.globalSearch === null) {
-              this.filterData = this.details;
+              return this.filterData;
             } else {
-              this.filterData = this.details.filter(data => {
+              return this.filterData = this.filterData.filter(data => {
                 return (
                   data.maName
                     .toLowerCase()
@@ -1974,7 +1915,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           }
         },
         mounted() {
-          this.filterData = this.details;
+          // this.filterData = this.details;
           // get a new date (locale machine date time)
           var date1 = new Date();
           const yyyy = date1.getFullYear();
