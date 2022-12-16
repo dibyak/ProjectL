@@ -23,7 +23,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
 					}
 				}
         console.log(_3dspaceUrl);
-      myWidget.webserviceToGetAllMAs();
+       myWidget.webserviceToGetAllMAs();
       myWidget.setVueTemplate();
       myWidget.loadData();
       // myWidget.webserviceForRepush();
@@ -1252,14 +1252,12 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 v-model="selected"
                 :headers="headers1"
                 :items="itemsWithSno"
-                selectable-key="isSelectable"
                 item-key="maName"
                 :search="search"
                 hide-default-footer
                 fixed-header
                 height= "auto"
                 show-select
-                class="text-truncate elevation-1"
                 elevation="8"
                 checkbox-color="blue"
                 resizable="true"
@@ -1615,12 +1613,13 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 text: "Sr. No.",
                 value: "sno",
                 width: "92px",
-                class: "word-wrap-example"
+                class: "word-wrap-example",
+                sortable: true,
               },
               {
                 text: "Name",
                 align: "start",
-                sortable: false,
+                sortable: true,
                 //   width: '200px',
                 value: "maName",
                 class: "word-wrap-example"
@@ -1628,43 +1627,43 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               {
                 text: "Status",
                 value: "status",
-                sortable: false,
+                sortable: true,
                 class: "word-wrap-example"
               },
               {
                 text: "Revision",
                 value: "revision",
-                sortable: false,
+                sortable: true,
                 class: "word-wrap-example"
               },
               {
                 text: "Title",
                 value: "title",
-                sortable: false,
+                sortable: true,
                 class: "word-wrap-example"
               },
               {
                 text: "Maturity",
                 value: "maturity",
-                sortable: false,
+                sortable: true,
                 class: "word-wrap-example"
               },
               {
                 text: "Description",
                 value: "description",
-                sortable: false,
+                sortable: true,
                 class: "word-wrap-example"
               },
               {
                 text: "CA completed time",
                 value: "caCompletedTime",
-                sortable: false,
+                sortable: true,
                 class: "word-wrap-example"
               },
               {
                 text: "CA Name",
                 value: "caName",
-                sortable: false,
+                sortable: true,
                 class: "word-wrap-example"
               },
               {
@@ -1676,7 +1675,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               {
                 text: "SAP Feedback Message",
                 value: "SapFeedbackMessage",
-                sortable: false,
+                sortable: true,
                 class: "word-wrap-example"
               }
             ],
@@ -1692,29 +1691,29 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 align: "start",
                 sortable: true,
                 // width: "200px",
-                sortable: false,
+                sortable: true,
                 value: "maName"
               },
               // { text: "Status", value: "status", width: "200px" },
-              { text: "Revision", value: "revision", sortable: false },
-              { text: "Title", value: "title", sortable: false },
-              { text: "Maturity", value: "maturity", sortable: false },
-              { text: "Description", value: "description", sortable: false },
+              { text: "Revision", value: "revision", sortable: true },
+              { text: "Title", value: "title", sortable: true },
+              { text: "Maturity", value: "maturity", sortable: true },
+              { text: "Description", value: "description", sortable: true },
               {
                 text: "CA completed time",
                 value: "caCompletedTime",
-                sortable: false
+                sortable: true
               },
-              { text: "CA Name", value: "caName", sortable: false },
+              { text: "CA Name", value: "caName", sortable: true },
               {
                 text: "SAP Feedback Time Stamp",
                 value: "SapFeedbackTimeStamp",
-                sortable: false
+                sortable: true
               },
               {
                 text: "SAP Feedback Message",
                 value: "SapFeedbackMessage",
-                sortable: false
+                sortable: true
               }
             ],
             time: "",
@@ -1727,17 +1726,17 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             console.log(a);
           },
           // checkbox method to enable only failed ones
+          
           onlyFailed() {
-
           // this.filteredData[3]["isSelectable"] = false;
           // return this.filteredData;
-          //   return this.filteredData.map(x => ({
-          //     ...x,
-          //     isSelectable: x.status == "Failed"
-          //   }));
+            return this.filteredData.map(x => ({
+              ...x,
+              isSelectable: x.status == "Failed"
+            }))
           },
           itemsWithSno() {
-            return this.filteredData.map((d, index) => ({ ...d, sno: index + 1}));
+            return this.onlyFailed.map((d, index) => ({ ...d, sno: index + 1}));
           },
           itemsWithSno1() {
             return this.waitingTable.map((d, index) => ({ ...d, sno: index + 1 }));
