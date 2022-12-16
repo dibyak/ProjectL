@@ -23,23 +23,25 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
 					}
 				}
         console.log(_3dspaceUrl);
-      myWidget.callWebservice1();
+      myWidget.webserviceToGetAllMAs();
       myWidget.setVueTemplate();
       myWidget.loadData();
-      // myWidget.callWebservice2();
+      // myWidget.webserviceForRepush();
     },
     setVueTemplate: () => {
       var $body = $(widget.body);
-      var c = `<div id='app'>
+      var vueTags = `<div id='app'>
       <v-app id="inspire">
     <p style="text-align: right;">Last refreshed on: {{ date }} {{ time }}</p>
     <div id="title">
       <h1>3DX-SAP Integration</h1>
     </div>
-    <!--<<v-container id="div" v-bind="get">
-    {{maDetails}}
-    </v-container>-->
-    <v-main>
+    <v-container>
+      <v-snackbar v-model="snackbar" color="success" top right :timeout="4000">
+                  <v-icon>mdi-check-circle</v-icon>
+                  <p>{{snackbarMsg}}</p>
+                </v-snackbar> 
+    </v-container>
       <div id="tabdiv">
         <v-tabs
           id="tabs"
@@ -76,6 +78,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             <v-app-bar class="ma-5" color="white" flat>
               <v-spacer></v-spacer>
               <v-text-field
+              class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
                 label="Search"
@@ -107,8 +110,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 :search="search"
                 hide-default-footer
                 fixed-header
-                height="300px"
-                show-select
+                height="auto"
                 class="elevation-1"
                 elevation="8"
                 checkbox-color="blue"
@@ -360,6 +362,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             <v-app-bar class="ma-5" color="white" flat>
               <v-spacer></v-spacer>
               <v-text-field
+              class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
                 label="Search"
@@ -391,8 +394,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 :search="search"
                 hide-default-footer
                 fixed-header
-                height="300px"
-                show-select
+                height="auto"
                 class="elevation-1"
                 elevation="8"
                 checkbox-color="blue"
@@ -644,6 +646,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             <v-app-bar class="ma-5" color="white" flat>
               <v-spacer></v-spacer>
               <v-text-field
+              class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
                 label="Search"
@@ -675,8 +678,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 :search="search"
                 hide-default-footer
                 fixed-header
-                height="300px"
-                show-select
+                height="auto"
                 class="elevation-1"
                 elevation="8"
                 checkbox-color="blue"
@@ -932,6 +934,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               >
               <v-spacer></v-spacer>
               <v-text-field
+              class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
                 label="Search"
@@ -963,7 +966,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 :search="search"
                 hide-default-footer
                 fixed-header
-                height="300px"
+                height="auto"
                 show-select
                 class="elevation-1"
                 elevation="8"
@@ -1220,6 +1223,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               >
               <v-spacer></v-spacer>
               <v-text-field
+              class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
                 label="Search"
@@ -1248,6 +1252,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 v-model="selected"
                 :headers="headers1"
                 :items="itemsWithSno"
+                selectable-key="isSelectable"
                 item-key="maName"
                 :search="search"
                 hide-default-footer
@@ -1259,6 +1264,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 checkbox-color="blue"
                 resizable="true"
               >
+              
               <!-- <template v-slot:item.caCompletedTime="{ item }">
                 <div class="col-8 text-truncate">
                 {{item.caCompletedTime}}
@@ -1515,15 +1521,14 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           </v-sheet>
         </v-tab-item>
       </v-tabs-items>
-    </v-main>
     <v-footer app>
       Lucid 3DX-SAP Integration Dashboard
     </v-footer>
   </v-app>
 						</div>`;
-      $body.html(c);
+      $body.html(vueTags);
     },
-    callWebservice1: function(){
+    webserviceToGetAllMAs: function(){
       var _this = this;
       WAFData.authenticatedRequest(_3dspaceUrl + "/LCDSAPIntegrationModeler/LCDSAPIntegrationService/getMA", {
         method: "GET",
@@ -1532,22 +1537,13 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           var data = JSON.parse(dataResp);
           _this.vueapp.details = data;
           _this.vueapp.filterData = data;
-          // console.log("------------>>>" + _this.vueapp.details);
-          
-          // var data1 = JSON.stringify(data);
-          // console.log("DATA1 =" +data1);
-          // var data2 = JSON.parse(data1);
-          // _this.details = data1;
-          // console.table(data2);
-          // console.log("--------++++++---->>>" + _this.details);
         },
         onFailure: function(error) {
           console.log(error);
         }
       });
     },
-    callWebservice2: function(){
-      debugger
+    webserviceForRepush: function(){
       // var payloadDetails;
       var _this = this;
       var Ca_ID = _this.vueapp.selected[0].caID;
@@ -1561,7 +1557,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                           ConnectionID:Connection_ID,
                           MaName: ma_name
                         };
-                      console.log(objSelected);
+                      // console.log("DATA SENT BY RE-PUSH--->" + objSelected);
       WAFData.authenticatedRequest(_3dspaceUrl + "/LCDSAPIntegrationModeler/LCDPushToSAPServices/PushToSAP", {
         method: "POST",
         accept: "application/json",
@@ -1573,9 +1569,15 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           },
         onComplete: function(myJson) {
           var returnData = JSON.parse(myJson);
-          var returnData1 = JSON.stringify(returnData);
-          _this.vueapp.responseData = returnData;
-          console.log("responce data:" + returnData1);
+          // _this.vueapp.responseData = returnData;
+          _this.vueapp.snackbar = true;
+          // _this.vueapp.snackbarMsg = "Darshit";
+          _this.vueapp.snackbarMsg = returnData;
+          console.log("DATA RESPONCE FROM RE-PUSH--->" +returnData);
+          // _this.vueapp.selected.map( x => {
+          //       x.status = "Success";
+          // }
+          // )
         },
         onFailure: function(error) {
           console.log(error);
@@ -1587,7 +1589,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         el: "#app",
         vuetify: new Vuetify(),
         data: {
-          responseData:[],
+          snackbar: false,
+          snackbarMsg : "",
             type: 1,
             active: true,
             maName: "",
@@ -1605,7 +1608,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             singleSelect: false,
             search: "",
             globalSearch: "",
-            details: [],
+            details:[],
             selected: [],
             headers1: [
               {
@@ -1615,7 +1618,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 class: "word-wrap-example"
               },
               {
-                text: "MA Name",
+                text: "Name",
                 align: "start",
                 sortable: false,
                 //   width: '200px',
@@ -1685,7 +1688,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 sortable: true
               },
               {
-                text: "MA Name",
+                text: "Name",
                 align: "start",
                 sortable: true,
                 // width: "200px",
@@ -1718,20 +1721,23 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             date: ""
         },
         computed: {
-          get(){
+          getDtaToBeSent(){
             const a = this.selected.map((obj) => [obj.maName, obj.maID, obj.caID, obj.ConnectionID]);
             this.maDetails = a;
             console.log(a);
           },
-          //checkbox method to enable only failed ones
+          // checkbox method to enable only failed ones
           onlyFailed() {
-            return this.filterData.map(x => ({
-              ...x,
-              isSelectable: x.status == "Failed"
-            }));
+
+          // this.filteredData[3]["isSelectable"] = false;
+          // return this.filteredData;
+          //   return this.filteredData.map(x => ({
+          //     ...x,
+          //     isSelectable: x.status == "Failed"
+          //   }));
           },
           itemsWithSno() {
-            return this.onlyFailed.map((d, index) => ({ ...d, sno: index + 1 }));
+            return this.filteredData.map((d, index) => ({ ...d, sno: index + 1}));
           },
           itemsWithSno1() {
             return this.waitingTable.map((d, index) => ({ ...d, sno: index + 1 }));
@@ -1845,9 +1851,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             );
           },
           rePush() {
-            debugger
-            myWidget.callWebservice2();
-
+            myWidget.webserviceForRepush();
             this.filteredData.map( x => {
               this.selected.map( y =>{
                 if(x.maID == y.maID) {
@@ -1875,9 +1879,9 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           },
           searchTable() {
             if (this.globalSearch === "" || this.globalSearch === null) {
-              return this.filterData;
+              this.filterData = this.details;
             } else {
-              return this.filterData = this.filterData.filter(data => {
+              return this.filterData = this.details.filter(data => {
                 return (
                   data.maName
                     .toLowerCase()
