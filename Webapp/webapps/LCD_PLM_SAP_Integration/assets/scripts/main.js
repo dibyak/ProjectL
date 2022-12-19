@@ -3,8 +3,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
   "vue",
   'DS/PlatformAPI/PlatformAPI',
   'DS/WAFData/WAFData',
-  "LCD/LCD_PLM_SAP_Integration/LCDLIB/scripts/vuetify",
-  "css!LCD/LCD_PLM_SAP_Integration/LCDLIB/styles/vuetify.min.css",
+  "LCD/LCD_PLM_SAP_Integration/lib/scripts/vuetify.min",
+  "css!LCD/LCD_PLM_SAP_Integration/lib/styles/vuetify.min.css",
   "css!LCD/LCDLIB/styles/google.css",
   "css!LCD/LCDLIB/styles/materialdesignicons.min.css",
   "css!LCD/LCD_PLM_SAP_Integration/assets/styles/style.css"
@@ -114,6 +114,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 class="elevation-1"
                 elevation="8"
                 checkbox-color="red"
+                must-sort
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -398,6 +399,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 class="elevation-1"
                 elevation="8"
                 checkbox-color="blue"
+                must-sort
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -682,6 +684,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 class="elevation-1"
                 elevation="8"
                 checkbox-color="blue"
+                must-sort
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -971,6 +974,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 class="elevation-1"
                 elevation="8"
                 checkbox-color="teal lighten-2"
+                must-sort
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -1261,6 +1265,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 elevation="8"
                 checkbox-color="teal lighten-2"
                 resizable="true"
+                must-sort
               >
               
               <!-- <template v-slot:item.caCompletedTime="{ item }">
@@ -1613,70 +1618,48 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 text: "Sr. No.",
                 value: "sno",
                 width: "92px",
-                class: "word-wrap-example",
-                sortable: true,
               },
               {
                 text: "Name",
                 align: "start",
-                sortable: true,
                 //   width: '200px',
                 value: "maName",
-                class: "word-wrap-example"
               },
               {
                 text: "Status",
                 value: "status",
-                sortable: true,
-                class: "word-wrap-example"
               },
               {
                 text: "Revision",
                 value: "revision",
-                sortable: true,
-                class: "word-wrap-example"
               },
               {
                 text: "Title",
                 value: "title",
-                sortable: true,
-                class: "word-wrap-example"
               },
               {
                 text: "Maturity",
                 value: "maturity",
-                sortable: true,
-                class: "word-wrap-example"
               },
               {
                 text: "Description",
                 value: "description",
-                sortable: true,
-                class: "word-wrap-example"
               },
               {
                 text: "CA completed time",
                 value: "caCompletedTime",
-                sortable: true,
-                class: "word-wrap-example"
               },
               {
                 text: "CA Name",
                 value: "caName",
-                sortable: true,
-                class: "word-wrap-example"
               },
               {
                 text: "SAP Feedback Time Stamp",
                 value: "SapFeedbackTimeStamp",
-                sortable: false,
-                class: "word-wrap-example"
               },
               {
                 text: "SAP Feedback Message",
                 value: "SapFeedbackMessage",
-                sortable: true,
-                class: "word-wrap-example"
               }
             ],
             headers: [
@@ -1684,36 +1667,31 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 text: "Sr. No.",
                 value: "sno",
                 width: "92px",
-                sortable: true
               },
               {
                 text: "Name",
                 align: "start",
-                sortable: true,
                 // width: "200px",
-                sortable: true,
                 value: "maName"
               },
               // { text: "Status", value: "status", width: "200px" },
-              { text: "Revision", value: "revision", sortable: true },
-              { text: "Title", value: "title", sortable: true },
-              { text: "Maturity", value: "maturity", sortable: true },
-              { text: "Description", value: "description", sortable: true },
+              { text: "Revision", value: "revision"},
+              { text: "Title", value: "title"},
+              { text: "Maturity", value: "maturity"},
+              { text: "Description", value: "description"},
               {
                 text: "CA completed time",
                 value: "caCompletedTime",
                 sortable: true
               },
-              { text: "CA Name", value: "caName", sortable: true },
+              { text: "CA Name", value: "caName"},
               {
                 text: "SAP Feedback Time Stamp",
-                value: "SapFeedbackTimeStamp",
-                sortable: true
+                value: "SapFeedbackTimeStamp"
               },
               {
                 text: "SAP Feedback Message",
-                value: "SapFeedbackMessage",
-                sortable: true
+                value: "SapFeedbackMessage"
               }
             ],
             time: "",
@@ -1728,8 +1706,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           // checkbox method to enable only failed ones
           
           onlyFailed() {
-          // this.filteredData[3]["isSelectable"] = false;
-          // return this.filteredData;
             return this.filteredData.map(x => ({
               ...x,
               isSelectable: x.status == "Failed"
@@ -1873,7 +1849,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             // }
           },
           clear() {
-
             this.filterData = this.details;
           },
           searchTable() {
