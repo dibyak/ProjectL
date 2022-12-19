@@ -3,12 +3,13 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
   "vue",
   'DS/PlatformAPI/PlatformAPI',
   'DS/WAFData/WAFData',
-  "LCD/LCDLIB/scripts/vuetify",
-  "css!LCD/LCDLIB/styles/vuetify.min.css",
+  "LCD/LCD_PLM_SAP_Integration/lib/scripts/vuetify.min",
+  "i18n!LCD/LCD_PLM_SAP_Integration/nls/PLM_SAP_Integration_nls",
+  "css!LCD/LCD_PLM_SAP_Integration/lib/styles/vuetify.min.css",
   "css!LCD/LCDLIB/styles/google.css",
   "css!LCD/LCDLIB/styles/materialdesignicons.min.css",
   "css!LCD/LCD_PLM_SAP_Integration/assets/styles/style.css"
-], function ($,Vue,PlatformAPI,WAFData, Vuetify) {
+], function ($,Vue,PlatformAPI,WAFData, Vuetify, PLM_SAP_Integration_nls) {
   
   Vue.use(Vuetify, {});
   var myWidget = {
@@ -23,7 +24,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
 					}
 				}
         console.log(_3dspaceUrl);
-      myWidget.webserviceToGetAllMAs();
+       myWidget.webserviceToGetAllMAs();
       myWidget.setVueTemplate();
       myWidget.loadData();
       // myWidget.webserviceForRepush();
@@ -113,7 +114,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 height="auto"
                 class="elevation-1"
                 elevation="8"
-                checkbox-color="blue"
+                checkbox-color="red"
+                must-sort
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -398,6 +400,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 class="elevation-1"
                 elevation="8"
                 checkbox-color="blue"
+                must-sort
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -682,6 +685,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 class="elevation-1"
                 elevation="8"
                 checkbox-color="blue"
+                must-sort
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -970,7 +974,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 show-select
                 class="elevation-1"
                 elevation="8"
-                checkbox-color="blue"
+                checkbox-color="teal lighten-2"
+                must-sort
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -1252,17 +1257,16 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 v-model="selected"
                 :headers="headers1"
                 :items="itemsWithSno"
-                selectable-key="isSelectable"
                 item-key="maName"
                 :search="search"
                 hide-default-footer
                 fixed-header
                 height= "auto"
                 show-select
-                class="text-truncate elevation-1"
                 elevation="8"
-                checkbox-color="blue"
+                checkbox-color="teal lighten-2"
                 resizable="true"
+                must-sort
               >
               
               <!-- <template v-slot:item.caCompletedTime="{ item }">
@@ -1615,69 +1619,48 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 text: "Sr. No.",
                 value: "sno",
                 width: "92px",
-                class: "word-wrap-example"
               },
               {
                 text: "Name",
                 align: "start",
-                sortable: false,
                 //   width: '200px',
                 value: "maName",
-                class: "word-wrap-example"
               },
               {
                 text: "Status",
                 value: "status",
-                sortable: false,
-                class: "word-wrap-example"
               },
               {
                 text: "Revision",
                 value: "revision",
-                sortable: false,
-                class: "word-wrap-example"
               },
               {
                 text: "Title",
                 value: "title",
-                sortable: false,
-                class: "word-wrap-example"
               },
               {
                 text: "Maturity",
                 value: "maturity",
-                sortable: false,
-                class: "word-wrap-example"
               },
               {
                 text: "Description",
                 value: "description",
-                sortable: false,
-                class: "word-wrap-example"
               },
               {
                 text: "CA completed time",
                 value: "caCompletedTime",
-                sortable: false,
-                class: "word-wrap-example"
               },
               {
                 text: "CA Name",
                 value: "caName",
-                sortable: false,
-                class: "word-wrap-example"
               },
               {
                 text: "SAP Feedback Time Stamp",
                 value: "SapFeedbackTimeStamp",
-                sortable: false,
-                class: "word-wrap-example"
               },
               {
                 text: "SAP Feedback Message",
                 value: "SapFeedbackMessage",
-                sortable: false,
-                class: "word-wrap-example"
               }
             ],
             headers: [
@@ -1685,36 +1668,31 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 text: "Sr. No.",
                 value: "sno",
                 width: "92px",
-                sortable: true
               },
               {
                 text: "Name",
                 align: "start",
-                sortable: true,
                 // width: "200px",
-                sortable: false,
                 value: "maName"
               },
               // { text: "Status", value: "status", width: "200px" },
-              { text: "Revision", value: "revision", sortable: false },
-              { text: "Title", value: "title", sortable: false },
-              { text: "Maturity", value: "maturity", sortable: false },
-              { text: "Description", value: "description", sortable: false },
+              { text: "Revision", value: "revision"},
+              { text: "Title", value: "title"},
+              { text: "Maturity", value: "maturity"},
+              { text: "Description", value: "description"},
               {
                 text: "CA completed time",
                 value: "caCompletedTime",
-                sortable: false
+                sortable: true
               },
-              { text: "CA Name", value: "caName", sortable: false },
+              { text: "CA Name", value: "caName"},
               {
                 text: "SAP Feedback Time Stamp",
-                value: "SapFeedbackTimeStamp",
-                sortable: false
+                value: "SapFeedbackTimeStamp"
               },
               {
                 text: "SAP Feedback Message",
-                value: "SapFeedbackMessage",
-                sortable: false
+                value: "SapFeedbackMessage"
               }
             ],
             time: "",
@@ -1727,17 +1705,15 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             console.log(a);
           },
           // checkbox method to enable only failed ones
+          
           onlyFailed() {
-
-          // this.filteredData[3]["isSelectable"] = false;
-          // return this.filteredData;
-          //   return this.filteredData.map(x => ({
-          //     ...x,
-          //     isSelectable: x.status == "Failed"
-          //   }));
+            return this.filteredData.map(x => ({
+              ...x,
+              isSelectable: x.status == "Failed"
+            }))
           },
           itemsWithSno() {
-            return this.filteredData.map((d, index) => ({ ...d, sno: index + 1}));
+            return this.onlyFailed.map((d, index) => ({ ...d, sno: index + 1}));
           },
           itemsWithSno1() {
             return this.waitingTable.map((d, index) => ({ ...d, sno: index + 1 }));
@@ -1793,24 +1769,24 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             return this.filterData;
           },
           successTable() {
-            return this.filteredData.filter(x => x.status == "Success");
+            return this.filteredData.filter(x => x.status == PLM_SAP_Integration_nls.success);
           },
           failedTable() {
-            return this.filteredData.filter(x => x.status == "Failed");
+            return this.filteredData.filter(x => x.status == PLM_SAP_Integration_nls.failed);
           },
           waitingTable() {
-            return this.filteredData.filter(x => x.status == "Waiting");
+            return this.filteredData.filter(x => x.status == PLM_SAP_Integration_nls.waiting);
           },
           inworkTable() {
-            return this.filteredData.filter(x => x.status == "In Work");
+            return this.filteredData.filter(x => x.status == PLM_SAP_Integration_nls.inWork);
           }
         },
         methods: {
           getColor(status) {
-            if (status === "Success") return "green lighten-1";
-            else if (status === "Failed") return "red lighten-1";
-            else if (status === "In Work") return "blue lighten-1";
-            else return "yellow lighten-1";
+            if (status === PLM_SAP_Integration_nls.success) return "green lighten-1";
+            else if (status === PLM_SAP_Integration_nls.failed) return "red lighten-1";
+            else if (status === PLM_SAP_Integration_nls.inWork) return "blue lighten-1";
+            else if (status === PLM_SAP_Integration_nls.waiting) return "yellow lighten-1";
           },
           filtermaName(item) {
             return item.maName.toLowerCase().includes(this.maName.toLowerCase());
@@ -1855,7 +1831,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             this.filteredData.map( x => {
               this.selected.map( y =>{
                 if(x.maID == y.maID) {
-                  x.status = "In Work";
+                  x.status = PLM_SAP_Integration_nls.inWork;
                 }
               }
               )
@@ -1874,7 +1850,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             // }
           },
           clear() {
-
             this.filterData = this.details;
           },
           searchTable() {
