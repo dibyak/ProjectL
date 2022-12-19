@@ -3,8 +3,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
   "vue",
   'DS/PlatformAPI/PlatformAPI',
   'DS/WAFData/WAFData',
-  "LCD/LCDLIB/scripts/vuetify",
-  "css!LCD/LCDLIB/styles/vuetify.min.css",
+  "LCD/LCD_PLM_SAP_Integration/LCDLIB/scripts/vuetify",
+  "css!LCD/LCD_PLM_SAP_Integration/LCDLIB/styles/vuetify.min.css",
   "css!LCD/LCDLIB/styles/google.css",
   "css!LCD/LCDLIB/styles/materialdesignicons.min.css",
   "css!LCD/LCD_PLM_SAP_Integration/assets/styles/style.css"
@@ -113,7 +113,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 height="auto"
                 class="elevation-1"
                 elevation="8"
-                checkbox-color="blue"
+                checkbox-color="red"
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -970,7 +970,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 show-select
                 class="elevation-1"
                 elevation="8"
-                checkbox-color="blue"
+                checkbox-color="teal lighten-2"
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -1259,7 +1259,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 height= "auto"
                 show-select
                 elevation="8"
-                checkbox-color="blue"
+                checkbox-color="teal lighten-2"
                 resizable="true"
               >
               
