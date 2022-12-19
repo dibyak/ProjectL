@@ -4,11 +4,12 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
   'DS/PlatformAPI/PlatformAPI',
   'DS/WAFData/WAFData',
   "LCD/LCD_PLM_SAP_Integration/lib/scripts/vuetify.min",
+  "i18n!LCD/LCD_PLM_SAP_Integration/nls/PLM_SAP_Integration_nls",
   "css!LCD/LCD_PLM_SAP_Integration/lib/styles/vuetify.min.css",
   "css!LCD/LCDLIB/styles/google.css",
   "css!LCD/LCDLIB/styles/materialdesignicons.min.css",
   "css!LCD/LCD_PLM_SAP_Integration/assets/styles/style.css"
-], function ($,Vue,PlatformAPI,WAFData, Vuetify) {
+], function ($,Vue,PlatformAPI,WAFData, Vuetify, PLM_SAP_Integration_nls) {
   
   Vue.use(Vuetify, {});
   var myWidget = {
@@ -1768,24 +1769,24 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             return this.filterData;
           },
           successTable() {
-            return this.filteredData.filter(x => x.status == "Success");
+            return this.filteredData.filter(x => x.status == PLM_SAP_Integration_nls.success);
           },
           failedTable() {
-            return this.filteredData.filter(x => x.status == "Failed");
+            return this.filteredData.filter(x => x.status == PLM_SAP_Integration_nls.failed);
           },
           waitingTable() {
-            return this.filteredData.filter(x => x.status == "Waiting");
+            return this.filteredData.filter(x => x.status == PLM_SAP_Integration_nls.waiting);
           },
           inworkTable() {
-            return this.filteredData.filter(x => x.status == "In Work");
+            return this.filteredData.filter(x => x.status == PLM_SAP_Integration_nls.inWork);
           }
         },
         methods: {
           getColor(status) {
-            if (status === "Success") return "green lighten-1";
-            else if (status === "Failed") return "red lighten-1";
-            else if (status === "In Work") return "blue lighten-1";
-            else return "yellow lighten-1";
+            if (status === PLM_SAP_Integration_nls.success) return "green lighten-1";
+            else if (status === PLM_SAP_Integration_nls.failed) return "red lighten-1";
+            else if (status === PLM_SAP_Integration_nls.inWork) return "blue lighten-1";
+            else if (status === PLM_SAP_Integration_nls.waiting) return "yellow lighten-1";
           },
           filtermaName(item) {
             return item.maName.toLowerCase().includes(this.maName.toLowerCase());
@@ -1830,7 +1831,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             this.filteredData.map( x => {
               this.selected.map( y =>{
                 if(x.maID == y.maID) {
-                  x.status = "In Work";
+                  x.status = PLM_SAP_Integration_nls.inWork;
                 }
               }
               )
