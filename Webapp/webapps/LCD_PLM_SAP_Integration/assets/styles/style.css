@@ -103,10 +103,12 @@ tr:nth-child(even) {
   max-width: 420px !important;
   min-width: 290px !important;
 }
-#repushbtn {
+.buttons {
   /* margin-left: 500px !important; */
   /* margin-right: -500px !important; */
   margin-top: 10px !important;
+  background-color: #039BE5 !important;
+  color: white !important;
 }
 .v-tab {
   align-items: center;
