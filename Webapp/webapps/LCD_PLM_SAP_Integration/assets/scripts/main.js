@@ -41,7 +41,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       <v-snackbar v-model="snackbar" color="success" top right :timeout="4000">
                   <v-icon>mdi-check-circle</v-icon>
                   <p>{{snackbarMsg}}</p>
-                </v-snackbar> 
+                </v-snackbar>
     </v-container>
       <div id="tabdiv">
         <v-tabs
@@ -52,7 +52,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           hide-slider
           color="black"
         >
-          <v-tab :href="'#tab-5'" active-class="teal lighten-4">
+          <v-tab :href="'#tab-5'" active-class="indigo lighten-2">
             All
           </v-tab>
           <v-tab :href="'#tab-1'" active-class="yellow lighten-2">
@@ -1223,9 +1223,15 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-              <v-btn id="repushbtn" color="#EEEEEE" @click="rePush"
+              <v-btn class="buttons" @click="rePush"
                 >Re-Push to SAP</v-btn
               >
+              <v-spacer></v-spacer>
+              <v-btn
+              class="buttons"
+              @click="export_table_to_csv"
+            >Export table to CSV
+            </v-btn>
               <v-spacer></v-spacer>
               <v-text-field
               class="globalsearch"
@@ -1267,6 +1273,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 checkbox-color="teal lighten-2"
                 resizable="true"
                 must-sort
+                :custom-sort="customSort"
               >
               
               <!-- <template v-slot:item.caCompletedTime="{ item }">
@@ -1709,7 +1716,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           onlyFailed() {
             return this.filteredData.map(x => ({
               ...x,
-              isSelectable: x.status == "Failed"
+              isSelectable: x.status == PLM_SAP_Integration_nls.failed
             }))
           },
           itemsWithSno() {
@@ -1782,6 +1789,77 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           }
         },
         methods: {
+          customSort: function(items, index, isDesc) {
+            items.sort((a, b) => {
+                if (index[0]=='caCompletedTime') {
+                  if (!isDesc[0]) {
+                      return new Date(b[index]) - new Date(a[index]);
+                  } else {
+                      return new Date(a[index]) - new Date(b[index]);
+                  }
+                }
+                else if (index[0]=='sno'){
+                  if (!isDesc[0]) {
+                    return b[index] - a[index];
+                } else {
+                    return a[index] - b[index];
+                }
+                }
+                else {
+                  if(typeof a[index] != 'undefined'){
+                    if (!isDesc[0]) {
+                       return a[index].toLowerCase().localeCompare(b[index].toLowerCase());
+                    }
+                    else {
+                        return b[index].toLowerCase().localeCompare(a[index].toLowerCase());
+                    }
+                  }
+                }
+            });
+            return items;
+          },
+          download_csv(csv, filename) {
+            var csvFile;
+            var downloadLink;
+        
+            // CSV FILE
+            csvFile = new Blob([csv], {type: "text/csv"});
+        
+            // Download link
+            downloadLink = document.createElement("a");
+        
+            // File name
+            downloadLink.download = filename;
+        
+            // We have to create a link to the file
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+        
+            // Make sure that the link is not displayed
+            downloadLink.style.display = "none";
+        
+            // Add the link to your DOM
+            document.body.appendChild(downloadLink);
+        
+            // Lanzamos
+            downloadLink.click();
+        },
+            export_table_to_csv(html, filename) {
+              var _this = this;
+          var csv = [];
+          var rows = document.querySelectorAll("table tr");
+          
+            for (var i = 0; i < rows.length; i++) {
+            var row = [], cols = rows[i].querySelectorAll("td, th");
+            
+                for (var j = 1; j < cols.length; j++)
+                    row.push(cols[j].innerText);
+                
+            csv.push(row.join(","));
+          }
+        
+            // Download CSV
+            _this.download_csv(csv.join("\n"), "3DX_SAP_Integration");
+        },
           getColor(status) {
             if (status === PLM_SAP_Integration_nls.success) return "green lighten-1";
             else if (status === PLM_SAP_Integration_nls.failed) return "red lighten-1";
