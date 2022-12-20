@@ -84,6 +84,12 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 
 	private static HashMap<String, JsonObjectBuilder> changeActionMap = new HashMap<>();
 
+	/*
+	 * Author : Akash THAKUR 
+	 * Version : 1.0 
+	 * Description : This program is used for 3DX SAP MBOM Integration
+	 */
+
 	/**
 	 * This Method is to get Relevant BOM Components which are connected with Anchor
 	 * Object and Send it to SAP.
@@ -868,7 +874,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				objectSelects.add(ATTR__PROCUREMENTINTENT_VPMREFERENCE); // "Procurement Intent"
 				objectSelects.add(ATTR__PARTINTERCHANGEABILITY_VPMREFERENCE); // "Part Interchangeability ";
 				objectSelects.add(ATTR__UNITOFMEASURE_VPMREFERENCE); // "Unit of Measure";
-                                      
+
 				// RelationShip Selectables
 				StringList relInfoList = new StringList();
 				relInfoList.add(DomainConstants.SELECT_ID);
@@ -1571,8 +1577,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 											ContextUtil.pushContext(context,
 													PropertyUtil.getSchemaProperty(context, "person_UserAgent"),
 													DomainConstants.EMPTY_STRING, DomainConstants.EMPTY_STRING);
-											domRelationship.setAttributeValue(context, ATTR__SAP_CAD_INSATNCE_UPDATED_ON,
-													DateFormat.format(date));
+											domRelationship.setAttributeValue(context,
+													ATTR__SAP_CAD_INSATNCE_UPDATED_ON, DateFormat.format(date));
 											ContextUtil.popContext(context);
 										} catch (Exception me) {
 											throw me;
@@ -1600,8 +1606,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @param String  responseString : Response from SAP webService
 	 * @throws Exception
 	 */
-	private void ProcessWebServiceResponseForManufacturingAssembly(Context context, String responseString, String strConnectionId)
-			throws Exception {
+	private void ProcessWebServiceResponseForManufacturingAssembly(Context context, String responseString,
+			String strConnectionId) throws Exception {
 		logger.writeLog("ProcessWebServiceResponseForManufacturingAssembly START");
 
 		SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy hh.mm.ss aa");
@@ -1787,7 +1793,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 						objectSelects.add(ATTR__SAPMBOMUPDATEDON_MANUFACTURINGASSEMBLY);
 
 						mobjectDetails = domRealizedItemObj.getInfo(context, objectSelects);
-						strObjProcureIntent = (String) mobjectDetails.get(ATTR__PROCUREMENTINTENT_MANUFACTURINGASSEMBLY);
+						strObjProcureIntent = (String) mobjectDetails
+								.get(ATTR__PROCUREMENTINTENT_MANUFACTURINGASSEMBLY);
 						strHasConfig = (String) mobjectDetails.get(ATTR__HASCONFIGCONTEXT_VPMREFERENCE);
 
 						if (realizedItemType.equalsIgnoreCase(TYPE_MANUFACTURINGASSEMBLY)
