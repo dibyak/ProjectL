@@ -152,3 +152,6 @@ tr:nth-child(even) {
 .v-application .red.lighten-2 {
     border: 1px solid grey !important;
 }
+.v-data-footer__select {
+  width: 70px !important;
+}
