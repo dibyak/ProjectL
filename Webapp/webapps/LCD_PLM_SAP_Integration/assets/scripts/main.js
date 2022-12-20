@@ -1273,6 +1273,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 checkbox-color="teal lighten-2"
                 resizable="true"
                 must-sort
+                :custom-sort="customSort"
               >
               
               <!-- <template v-slot:item.caCompletedTime="{ item }">
@@ -1715,7 +1716,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           onlyFailed() {
             return this.filteredData.map(x => ({
               ...x,
-              isSelectable: x.status == "Failed"
+              isSelectable: x.status == PLM_SAP_Integration_nls.failed
             }))
           },
           itemsWithSno() {
@@ -1788,6 +1789,35 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           }
         },
         methods: {
+          customSort: function(items, index, isDesc) {
+            items.sort((a, b) => {
+                if (index[0]=='caCompletedTime') {
+                  if (!isDesc[0]) {
+                      return new Date(b[index]) - new Date(a[index]);
+                  } else {
+                      return new Date(a[index]) - new Date(b[index]);
+                  }
+                }
+                else if (index[0]=='sno'){
+                  if (!isDesc[0]) {
+                    return b[index] - a[index];
+                } else {
+                    return a[index] - b[index];
+                }
+                }
+                else {
+                  if(typeof a[index] != 'undefined'){
+                    if (!isDesc[0]) {
+                       return a[index].toLowerCase().localeCompare(b[index].toLowerCase());
+                    }
+                    else {
+                        return b[index].toLowerCase().localeCompare(a[index].toLowerCase());
+                    }
+                  }
+                }
+            });
+            return items;
+          },
           download_csv(csv, filename) {
             var csvFile;
             var downloadLink;
@@ -1828,7 +1858,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           }
         
             // Download CSV
-            _this.download_csv(csv.join("\n"), "3DX-SAP Integration");
+            _this.download_csv(csv.join("\n"), "3DX_SAP_Integration");
         },
           getColor(status) {
             if (status === PLM_SAP_Integration_nls.success) return "green lighten-1";
