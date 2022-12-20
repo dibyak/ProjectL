@@ -1,0 +1,2 @@
+Name	Registry Name	Parent Type	Abstract (boolean)	Description	"Attributes (use ""|"" delim)"	"Methods (use ""|"" delim)"	Hidden (boolean)	Sparse (boolean)	Maybecomposed(boolean)	Specializable(ReadOnly)	CustomerExtensible(ReadOnly)	CustomerExposition(ReadOnly)	Icon File
+LCD_BOMAnchorObject	LCD_BOMAnchorObject		FALSE	Type for SAP Integration			TRUE	FALSE		No	No		
