@@ -38,10 +38,14 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       <h1>3DX-SAP Integration</h1>
     </div>
     <v-container>
-      <v-snackbar v-model="snackbar" color="success" top right :timeout="4000">
+      <v-snackbar v-model="snackbar_success" color="success" top right :timeout="4000">
                   <v-icon>mdi-check-circle</v-icon>
                   <p>{{snackbarMsg}}</p>
                 </v-snackbar>
+        <v-snackbar v-model="snackbar_error" color="error" top right :timeout="4000">
+                  <v-icon>mdi-close-circle</v-icon>
+                  <p>{{snackbarMsg}}</p>
+      </v-snackbar>
     </v-container>
       <div id="tabdiv">
         <v-tabs
@@ -933,7 +937,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-              <v-btn id="repushbtn" color="#EEEEEE" @click="rePush"
+              <v-btn class="buttons" @click="rePush"
                 >Re-Push to SAP</v-btn
               >
               <v-spacer></v-spacer>
@@ -1265,7 +1269,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 :items="itemsWithSno"
                 item-key="maName"
                 :search="search"
-                hide-default-footer
                 fixed-header
                 height= "auto"
                 show-select
@@ -1275,7 +1278,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 must-sort
                 :custom-sort="customSort"
               >
-              
               <!-- <template v-slot:item.caCompletedTime="{ item }">
                 <div class="col-8 text-truncate">
                 {{item.caCompletedTime}}
@@ -1581,14 +1583,40 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         onComplete: function(myJson) {
           var returnData = JSON.parse(myJson);
           // _this.vueapp.responseData = returnData;
-          _this.vueapp.snackbar = true;
+          if(myJson.status == PLM_SAP_Integration_nls.success) {
+            _this.vueapp.snackbar_success = true;
+            _this.vueapp.filteredData.map( x => {
+              _this.vueapp.selected.map( y =>{
+                if(x.maID == y.maID) {
+                  x.status = PLM_SAP_Integration_nls.success;
+                }
+              }
+              )
+            })
+          }
+          else {
+            _this.vueapp.snackbar_error = true;
+            _this.vueapp.filteredData.map( x => {
+              _this.vueapp.selected.map( y =>{
+                if(x.maID == y.maID) {
+                  x.status = PLM_SAP_Integration_nls.failed;
+                }
+              }
+              )
+            })
+          }
           // _this.vueapp.snackbarMsg = "Darshit";
           _this.vueapp.snackbarMsg = returnData;
           console.log("DATA RESPONCE FROM RE-PUSH--->" +returnData);
-          // _this.vueapp.selected.map( x => {
-          //       x.status = "Success";
-          // }
-          // )
+          // _this.vueapp.filteredData.map( x => {
+          //   _this.vueapp.selected.map( y =>{
+          //     if(x.maID == y.maID) {
+          //       x.status = PLM_SAP_Integration_nls.success;
+          //     }
+          //   }
+          //   )
+          // })
+          _this.vueapp.selected = [];
         },
         onFailure: function(error) {
           console.log(error);
@@ -1600,7 +1628,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         el: "#app",
         vuetify: new Vuetify(),
         data: {
-          snackbar: false,
+          snackbar_success: false,
+          snackbar_error: false,
           snackbarMsg : "",
             type: 1,
             active: true,
