@@ -1,2 +1,0 @@
-Name	Registry Name	Description	Store	Hidden (boolean)	"Types (use ""|"" delim)"	"Formats (use ""|"" delim)"	Default Format	Locking (boolean)	Allstate (boolean)	Minor Rev Seq (use 'continue' for '...')	Major Rev Seq (use 'continue' for '...')	Delimiter	Icon File
-LCD_3DXSAPIntegration	LCD_3DXSAPIntegration	governs the type for SAP Integration	STORE	TRUE	LCD_BOMAnchorObject	generic	generic	FALSE	TRUE				
