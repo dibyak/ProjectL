@@ -65,6 +65,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	private static final String ATTR_LCD_PROCESS_STATUS_FLAG = "LCD_ProcessStatusFlag";
 	private static final String ATTR_LCD_REASON_FOR_FAILURE = "LCD_ReasonforFailure";
 	private static final String ATTR_LCD_CAID = "LCD_CAID";
+	private static final String VALUE_STATUS_FAILED = "Failed";
+	private static final String VALUE_STATUS_COMPLETE = "Complete";
 
 	private static String language;
 	private static String userName;
@@ -83,6 +85,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	private static String subContractRelId;
 
 	private static HashMap<String, JsonObjectBuilder> changeActionMap = new HashMap<>();
+	private static String responseString;
 
 	/*
 	 * Author : Akash THAKUR 
@@ -95,10 +98,13 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * Object and Send it to SAP.
 	 * 
 	 * @param context
+	 * @return 
 	 * @throws Exception
 	 */
 
 	public void FindRelevantObjectsConnectedToAnchorObject(Context context) throws Exception {
+		
+		String responseString = "";
 
 		BusinessObject busObjAchor = new BusinessObject(TYPE_LCD_BOM_ANCHOR_OBJECT, // String Type
 				NAME_LCD_ANCHOR_OBJECT, // String Name
@@ -140,8 +146,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			String strReasonForFailure = domRelBOMComponents.getAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE);
 			String strCAID = domRelBOMComponents.getAttributeValue(context, ATTR_LCD_CAID);
 
-			if (!(strProcessStatusFlag.equalsIgnoreCase("Complete")
-					&& strProcessStatusFlag.equalsIgnoreCase("In Work"))) {
+			if (!(strProcessStatusFlag.equalsIgnoreCase("Complete") && strProcessStatusFlag.equalsIgnoreCase("In Work"))) {
 				if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strBOMComponentType)) {
 					SendToSAP(context, strBOMComponentId, strBOMComponentType, strCAID, strProcessStatusFlag,
 							strConnectionId);
@@ -149,10 +154,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 					Map<?, ?> mLinkedCadPart = getLinkedCADPartFromMBOMPart(context, strBOMComponentId, REL_PROVIDE);
 					String strProcurementIntent = (String) mLinkedCadPart.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
 					if (SUBCONTRACT.equalsIgnoreCase(strProcurementIntent)) {
-						processSubContractPart(context, mLinkedCadPart);
+						processSubContractPart(context, mLinkedCadPart, strConnectionId);
 					}
 				}
-
 			}
 		}
 	}
@@ -165,9 +169,10 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @throws Exception
 	 */
 
-	public void RePushFailedBomComponentsToSAP(Context context, String args[]) throws Exception {
+	public String RePushFailedBomComponentsToSAP(Context context, String args[]) throws Exception {
 
 		HashMap<?, ?> programMap = (HashMap<?, ?>) JPO.unpackArgs(args);
+		String responseString = "";
 
 		// STEP : Retrieving Input Arguments
 		String strConnectionId = (String) programMap.get("connectionId");
@@ -185,17 +190,19 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 		String strBOMComponentType = (String) bomMap.get(DomainConstants.SELECT_TYPE);
 
 		if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strBOMComponentType)) {
-			SendToSAP(context, strBOMComponentId, strBOMComponentType, strCAID, "Failed", strConnectionId);
+			responseString = SendToSAP(context, strBOMComponentId, strBOMComponentType, strCAID, "Failed", strConnectionId);
 		} else {
 			Map<?, ?> mLinkedCadPart = getLinkedCADPartFromMBOMPart(context, strBOMComponentId, REL_PROVIDE);
 			String strProcurementIntent = (String) mLinkedCadPart.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
 			if (SUBCONTRACT.equalsIgnoreCase(strProcurementIntent)) {
-				processSubContractPart(context, mLinkedCadPart);
+				responseString = processSubContractPart(context, mLinkedCadPart, strConnectionId);
 			}
 		}
+		logger.writeLog("response from SAP for Re-Push faild components >>>> "+ responseString);
+		return responseString;
 	}
 
-	public void SendToSAP(Context context, String strBOMComponentId, String strBOMComponentType, String caId,
+	public String SendToSAP(Context context, String strBOMComponentId, String strBOMComponentType, String caId,
 			String processStatusFlag, String strConnectionId) throws Exception {
 
 		try {
@@ -272,7 +279,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 								JsonObjectBuilder jHeaderPartObjectBuilder;
 								JsonObject jEachPayloadObj;
 								String requestString;
-								String responseString;
+								
 
 								if (UIUtil.isNotNullAndNotEmpty(strBOMComponentId)) {
 									// STEP : Retrieving realized item's object details
@@ -335,7 +342,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 															+ " \n ");
 
 													// STEP : Processing Response of SAP web Service
-													if (UIUtil.isNotNullAndNotEmpty(responseString))
+													if (UIUtil.isNotNullAndNotEmpty(responseString)) 
 														ProcessWebServiceResponseForManufacturingAssembly(context,
 																responseString, strConnectionId);
 													else
@@ -389,6 +396,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 		} finally {
 			getCloseableHttpClient().close();
 		}
+		return responseString;
 	}
 
 	/**
@@ -906,11 +914,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 
 									DomainObject boCADObj = DomainObject.newInstance(context, ostrVPMReferenceId);
 									objInfoMap = boCADObj.getInfo(context, objectSelects);
-									if (!objInfoMap.isEmpty()) {
-										// System.out.println("objInfoMap " + objInfoMap);
-										return objInfoMap;
-									} else
-										return objInfoMap;
+									
 								}
 
 							} catch (Exception e) {
@@ -938,8 +942,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @throws Exception
 	 */
 
-	private void processSubContractPart(Context context, Map<?, ?> mLinkedCadPart) throws Exception {
+	private String processSubContractPart(Context context, Map<?, ?> mLinkedCadPart, String strConnectionId) throws Exception {
 		logger.writeLog("processSubContractPart : START !!");
+		String strCADPartResponseString = "";
 		try {
 
 			// STEP : Retrieving necessary information of SubContract Part
@@ -962,17 +967,17 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 						strProcIntent = (String) mSubContractPartDetails.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
 						if (SUBCONTRACT.equalsIgnoreCase(strProcIntent)) {
 							strRelId = (String) mSubContractPartDetails.get(DomainConstants.SELECT_RELATIONSHIP_ID);
-							sendSubContractPartPayload(context, mSubContractPartDetails, strRelId);
+							strCADPartResponseString = sendSubContractPartPayload(context, mSubContractPartDetails, strRelId, strConnectionId);
 						}
 					}
-					// sendSubContractPartPayload(context , mLinkedCadPart,strRelId );
 				}
-				sendSubContractPartPayload(context, mLinkedCadPart, strRelId);
+				strCADPartResponseString = sendSubContractPartPayload(context, mLinkedCadPart, strRelId, strConnectionId);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		logger.writeLog("processSubContractPart : END !!");
+		return strCADPartResponseString;
 	}
 
 	/**
@@ -1048,9 +1053,10 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @throws Exception
 	 */
 
-	private void sendSubContractPartPayload(Context context, Map<?, ?> mSubContractPartDetails, String strRelId)
+	private String sendSubContractPartPayload(Context context, Map<?, ?> mSubContractPartDetails, String strRelId, String strConnectionId)
 			throws Exception {
 		logger.writeLog("sendSubContractPartPayload : START !!");
+		String strCADPartResponseString = "";
 
 		try {
 
@@ -1125,12 +1131,12 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 							String jsonEachPayloadString = jSubContractPayloadObj.toString();
 							jsonLogger.writeLog("JSON Payload Request for SubContract : <<< " + strTitle + " : >>> \n "
 									+ jsonEachPayloadString + " \n ");
-							String responseString = callPostService(context, jSubContractPayloadObj);
+							strCADPartResponseString = callPostService(context, jSubContractPayloadObj);
 							jsonLogger.writeLog("Response for SubContract : <<< " + strTitle
 									+ " :  Payload from SAP WebService >>> \n " + responseString + " \n ");
 
 							if (UIUtil.isNotNullAndNotEmpty(responseString))
-								ProcessWebServiceResponseForSubContract(context, responseString);
+								ProcessWebServiceResponseForSubContract(context, responseString, strConnectionId);
 							else
 								logger.writeLog("ERROR :: No response received from SAP Webservice for SubContract << "
 										+ strTitle + " >>");
@@ -1143,6 +1149,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			e.printStackTrace();
 		}
 		logger.writeLog("sendSubContractPartPayload : END !!");
+		return strCADPartResponseString;
 	}
 
 	/**
@@ -1510,8 +1517,10 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @param String  responseString : Response from SAP webService
 	 * @throws Exception
 	 */
-	private void ProcessWebServiceResponseForSubContract(Context context, String responseString) throws Exception {
+	private void ProcessWebServiceResponseForSubContract(Context context, String responseString, String strConnectionId) throws Exception {
 		logger.writeLog("ProcessWebServiceResponseForSubContract START");
+		String strErrMes = "";
+		
 		SimpleDateFormat DateFormat = new SimpleDateFormat("MM/dd/yyyy hh.mm.ss aa");
 		try (JsonReader jsonReader = Json.createReader(new StringReader(responseString))) {
 			JsonObject jWebServiceResponse = jsonReader.readObject();
@@ -1524,25 +1533,35 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 							setSubContractFailedFlag(true);
 							String strErrorMessage = jPayloadObject.getString(TAG_ERROR_MESSAGE);
 							String strRelID = jPayloadObject.getString(TAG_REL_ID);
+							String strObjTitle = jPayloadObject.getString(TAG_TITLE);
 
-							if (UIUtil.isNotNullAndNotEmpty(strRelID) && UIUtil.isNotNullAndNotEmpty(strErrorMessage))
-								addRelationshipHistory(context, strRelID, strErrorMessage);
+							if (UIUtil.isNotNullAndNotEmpty(strRelID) && UIUtil.isNotNullAndNotEmpty(strErrorMessage)) {
+//								addRelationshipHistory(context, strRelID, strErrorMessage);
+								strErrMes = strObjTitle + ":" + strErrorMessage + "\n";
+							}
 
 							JsonArray jArrayOfChildParts = jPayloadObject.getJsonArray(HEADER_CHILDREN);
 							if (null != jArrayOfChildParts) {
 								JsonObject jchildPart;
 								String strPartRelID;
 								String sErrorMessage;
+								String strPartTitle;
 								for (int i = 0; i < jArrayOfChildParts.size(); i++) {
 									jchildPart = jArrayOfChildParts.getJsonObject(i);
+									strPartTitle = jchildPart.getString(TAG_TITLE);
 									strPartRelID = jchildPart.getString(TAG_REL_ID);
 									sErrorMessage = jchildPart.getString(TAG_ERROR_MESSAGE);
 
 									if (UIUtil.isNotNullAndNotEmpty(strPartRelID)
 											&& UIUtil.isNotNullAndNotEmpty(sErrorMessage))
-										addRelationshipHistory(context, strPartRelID, sErrorMessage);
+										strErrMes.concat(strPartTitle + ":" + sErrorMessage + "\n");
+//										addRelationshipHistory(context, strPartRelID, sErrorMessage);
 								}
 							}
+							DomainRelationship domRel = DomainRelationship.newInstance(context, strConnectionId);
+							domRel.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, VALUE_STATUS_FAILED);
+							domRel.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE, strErrMes);
+							
 						} else if (UIUtil.isNotNullAndNotEmpty(resultType) && resultType.equalsIgnoreCase(SUCCESS)) {
 							String strRelID = jPayloadObject.getString(TAG_REL_ID);
 							if (UIUtil.isNotNullAndNotEmpty(strRelID)) {
@@ -1556,6 +1575,11 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 											DomainConstants.EMPTY_STRING, DomainConstants.EMPTY_STRING);
 									domRel.setAttributeValue(context, ATTR__SAP_CAD_INSATNCE_UPDATED_ON,
 											DateFormat.format(date));
+									
+									DomainRelationship domRelPhysicalProduct = DomainRelationship.newInstance(context, strConnectionId);
+									domRelPhysicalProduct.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, VALUE_STATUS_FAILED);
+									domRelPhysicalProduct.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE, strErrMes);
+									
 									ContextUtil.popContext(context);
 								} catch (Exception me) {
 									throw me;
@@ -1610,6 +1634,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			String strConnectionId) throws Exception {
 		logger.writeLog("ProcessWebServiceResponseForManufacturingAssembly START");
 
+		String strErrMes = "";
 		SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy hh.mm.ss aa");
 		try (JsonReader jsonReader = Json.createReader(new StringReader(responseString))) {
 			JsonObject jWebServiceResponse = jsonReader.readObject();
@@ -1625,8 +1650,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 							String strObjTitle = jPayloadObject.getString(TAG_TITLE);
 
 							if (UIUtil.isNotNullAndNotEmpty(strObjID) && UIUtil.isNotNullAndNotEmpty(strErrorMessage)) {
-								strErrorMessage = strObjTitle + ":" + strErrorMessage;
-								addObjectHistory(context, strObjID, strErrorMessage);
+								strErrMes = strObjTitle + ":" + strErrorMessage + "\n";
+//								addObjectHistory(context, strObjID, strErrorMessage);
 							}
 
 							JsonArray jArrayOfChildParts = jPayloadObject.getJsonArray(HEADER_CHILDREN);
@@ -1643,16 +1668,17 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 
 									if (UIUtil.isNotNullAndNotEmpty(strPartRelID)
 											&& UIUtil.isNotNullAndNotEmpty(sErrorMessage)) {
-										addRelationshipHistory(context, strPartRelID, sErrorMessage); // adding history
-																										// on MBOM
-																										// Instance
+//										addRelationshipHistory(context, strPartRelID, sErrorMessage); // adding history on MBOM Instance
 
-										strErrorMessage = strPartTitle + ":" + sErrorMessage;
-										addObjectHistory(context, strObjID, strErrorMessage); // Adding history on M11
-																								// Object
+										strErrMes.concat(strPartTitle + ":" + sErrorMessage + "\n");
+//										addObjectHistory(context, strObjID, strErrorMessage); // Adding history on M11 Object
 									}
 								}
 							}
+							DomainRelationship domRelMA = DomainRelationship.newInstance(context, strConnectionId);
+							domRelMA.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, VALUE_STATUS_FAILED);
+							domRelMA.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE, strErrMes);
+							
 						} else if (UIUtil.isNotNullAndNotEmpty(resultType) && resultType.equalsIgnoreCase(SUCCESS)) {
 							String strObjID = jPayloadObject.getString(TAG_OID);
 							if (UIUtil.isNotNullAndNotEmpty(strObjID)) {
@@ -1669,6 +1695,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 										HeaderObject.setAttributeValue(context, ATTR__SAP_UNIQUEID, strSAPUniqueID);
 										HeaderObject.setAttributeValue(context, ATTR__SAPMBOM_UPDATED_ON,
 												dateFormat.format(date));
+										DomainRelationship domRel = DomainRelationship.newInstance(context, strConnectionId);
+										domRel.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, VALUE_STATUS_COMPLETE);
+										domRel.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE, strErrMes);
 										ContextUtil.popContext(context);
 									}
 								} catch (Exception e) {
