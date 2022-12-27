@@ -2,5 +2,97 @@
 	"success": "Complete",
 	"failed": "Failed",
 	"inWork": "In Work",
-	"waiting": "Waiting"
+	"waiting": "Waiting",
+	"caCompletedTime":"caCompletedTime",
+	"sno":"sno",
+	"headers1": [{
+			"text": "Sr. No.",
+			"value": "sno",
+			"width": "92px"
+		},
+		{
+			"text": "Name",
+			"align": "start",
+			"value": "maName"
+		},
+		{
+			"text": "Status",
+			"value": "status"
+		},
+		{
+			"text": "Revision",
+			"value": "revision"
+		},
+		{
+			"text": "Title",
+			"value": "title"
+		},
+		{
+			"text": "Maturity",
+			"value": "maturity"
+		},
+		{
+			"text": "Description",
+			"value": "description"
+		},
+		{
+			"text": "CA completed time",
+			"value": "caCompletedTime"
+		},
+		{
+			"text": "CA Name",
+			"value": "caName"
+		},
+		{
+			"text": "SAP Feedback Time Stamp",
+			"value": "SapFeedbackTimeStamp"
+		},
+		{
+			"text": "SAP Feedback Message",
+			"value": "SapFeedbackMessage"
+		}
+	],
+	"headers": [{
+			"text": "Sr. No.",
+			"value": "sno",
+			"width": "92px"
+		},
+		{
+			"text": "Name",
+			"align": "start",
+			"value": "maName"
+		},
+		{
+			"text": "Revision",
+			"value": "revision"
+		},
+		{
+			"text": "Title",
+			"value": "title"
+		},
+		{
+			"text": "Maturity",
+			"value": "maturity"
+		},
+		{
+			"text": "Description",
+			"value": "description"
+		},
+		{
+			"text": "CA completed time",
+			"value": "caCompletedTime"
+		},
+		{
+			"text": "CA Name",
+			"value": "caName"
+		},
+		{
+			"text": "SAP Feedback Time Stamp",
+			"value": "SapFeedbackTimeStamp"
+		},
+		{
+			"text": "SAP Feedback Message",
+			"value": "SapFeedbackMessage"
+		}
+	]
 }

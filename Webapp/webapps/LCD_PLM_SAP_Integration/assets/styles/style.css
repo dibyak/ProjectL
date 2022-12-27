@@ -74,7 +74,7 @@ tr:nth-child(even) {
   height: 36px;
   min-width: 64px;
   padding: 0 16px;
-  margin: 0px !important;
+  /* margin: 0px !important; */
 }
 .v-text-field.v-input--has-state
   .v-input__control
@@ -105,7 +105,7 @@ tr:nth-child(even) {
 }
 .buttons {
   /* margin-left: 500px !important; */
-  /* margin-right: -500px !important; */
+  margin-right: 40px !important;
   margin-top: 10px !important;
   background-color: #039BE5 !important;
   color: white !important;
@@ -154,4 +154,11 @@ tr:nth-child(even) {
 }
 .v-data-footer__select {
   width: 70px !important;
+}
+a, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, hgroup, html, i, iframe, img, ins, kbd, label, legend, mark, nav, nav li, nav ul, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, var, video {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  vertical-align: middle !important;;
 }
