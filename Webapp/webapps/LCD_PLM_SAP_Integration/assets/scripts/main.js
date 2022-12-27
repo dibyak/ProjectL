@@ -39,12 +39,30 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
     </div>
     <v-container>
       <v-snackbar v-model="snackbar_success" color="success" top right :timeout="4000">
-                  <v-icon>mdi-check-circle</v-icon>
-                  <p>{{snackbarMsg}}</p>
-                </v-snackbar>
-        <v-snackbar v-model="snackbar_error" color="error" top right :timeout="4000">
-                  <v-icon>mdi-close-circle</v-icon>
-                  <p>{{snackbarMsg}}</p>
+        <p><v-icon>mdi-check-circle</v-icon>{{snackbarMsg}}</p>
+        <template v-slot:action="{ attrs }">
+        <v-btn
+          text
+          color="white"
+          v-bind="attrs"
+          @click="snackbar_success = false"
+        >
+        <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </template>
+      </v-snackbar>
+      <v-snackbar v-model="snackbar_error" color="error" top right :timeout="4000">
+        <p><v-icon>mdi-close-circle</v-icon>{{snackbarMsg}}</p>
+        <template v-slot:action="{ attrs }">
+        <v-btn
+          text
+          color="white"
+          v-bind="attrs"
+          @click="snackbar_error = false"
+        >
+        <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </template>
       </v-snackbar>
     </v-container>
       <div id="tabdiv">
@@ -116,9 +134,10 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 hide-default-footer
                 fixed-header
                 height="auto"
+                show-select
                 class="elevation-1"
                 elevation="8"
-                checkbox-color="red"
+                checkbox-color="teal lighten-2"
                 must-sort
               >
                 <template v-slot:header.maName="{ header }">
@@ -401,9 +420,10 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 hide-default-footer
                 fixed-header
                 height="auto"
+                show-select
                 class="elevation-1"
                 elevation="8"
-                checkbox-color="blue"
+                checkbox-color="teal lighten-2"
                 must-sort
               >
                 <template v-slot:header.maName="{ header }">
@@ -686,9 +706,10 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 hide-default-footer
                 fixed-header
                 height="auto"
+                show-select
                 class="elevation-1"
                 elevation="8"
-                checkbox-color="blue"
+                checkbox-color="teal lighten-2"
                 must-sort
               >
                 <template v-slot:header.maName="{ header }">
@@ -938,7 +959,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
               <v-btn class="buttons" @click="rePush"
-                >Re-Push to SAP</v-btn
+              :disabled="!failedStatus">Re-Push to SAP</v-btn
               >
               <v-spacer></v-spacer>
               <v-text-field
@@ -976,10 +997,10 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 fixed-header
                 height="auto"
                 show-select
-                class="elevation-1"
                 elevation="8"
                 checkbox-color="teal lighten-2"
                 must-sort
+                @item-selected="disableRePushBtn"
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -1228,13 +1249,17 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
               <v-btn class="buttons" @click="rePush"
-                >Re-Push to SAP</v-btn
+              :disabled="!failedStatus">Re-Push to SAP</v-btn
               >
-              <v-spacer></v-spacer>
               <v-btn
               class="buttons"
               @click="export_table_to_csv"
             >Export table to CSV
+            </v-btn>
+            <v-btn
+              class="buttons"
+              @click="export_table_to_csv"
+            >Export part data
             </v-btn>
               <v-spacer></v-spacer>
               <v-text-field
@@ -1277,6 +1302,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 resizable="true"
                 must-sort
                 :custom-sort="customSort"
+                @item-selected="disableRePushBtn"
               >
               <!-- <template v-slot:item.caCompletedTime="{ item }">
                 <div class="col-8 text-truncate">
@@ -1557,20 +1583,20 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       });
     },
     webserviceForRepush: function(){
-      // var payloadDetails;
+      debugger
       var _this = this;
-      var Ca_ID = _this.vueapp.selected[0].caID;
-      var BOM_Comp_ID = _this.vueapp.selected[0].maID;
-      var ma_name = _this.vueapp.selected[0].maName;
-      var Connection_ID = _this.vueapp.selected[0].ConnectionID;
-
-      var objSelected = {
-                          CAID :Ca_ID,
-                          BOMComponentID:BOM_Comp_ID,
-                          ConnectionID:Connection_ID,
-                          MaName: ma_name
-                        };
-                      // console.log("DATA SENT BY RE-PUSH--->" + objSelected);
+      // let i = 0;
+      for(let i=0; i<_this.vueapp.selected.length; i++) {
+      var Ca_ID = _this.vueapp.selected[i].caID;
+            var BOM_Comp_ID = _this.vueapp.selected[i].maID;
+            var ma_name = _this.vueapp.selected[i].maName;
+            var Connection_ID = _this.vueapp.selected[i].ConnectionID;
+            var objSelected = {
+                            CAID :Ca_ID,
+                            BOMComponentID:BOM_Comp_ID,
+                            ConnectionID:Connection_ID,
+                            MaName: ma_name
+                          };
       WAFData.authenticatedRequest(_3dspaceUrl + "/LCDSAPIntegrationModeler/LCDPushToSAPServices/PushToSAP", {
         method: "POST",
         accept: "application/json",
@@ -1583,7 +1609,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         onComplete: function(myJson) {
           var returnData = JSON.parse(myJson);
           // _this.vueapp.responseData = returnData;
-          if(myJson.status == PLM_SAP_Integration_nls.success) {
+          console.log("MYJSON -->" + returnData.Status);
+          if(returnData.Status == "Success") {
             _this.vueapp.snackbar_success = true;
             _this.vueapp.filteredData.map( x => {
               _this.vueapp.selected.map( y =>{
@@ -1605,9 +1632,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               )
             })
           }
-          // _this.vueapp.snackbarMsg = "Darshit";
           _this.vueapp.snackbarMsg = returnData;
-          console.log("DATA RESPONCE FROM RE-PUSH--->" +returnData);
+          // console.log("DATA RESPONCE FROM RE-PUSH--->" +returnData);
           // _this.vueapp.filteredData.map( x => {
           //   _this.vueapp.selected.map( y =>{
           //     if(x.maID == y.maID) {
@@ -1616,18 +1642,23 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           //   }
           //   )
           // })
-          _this.vueapp.selected = [];
         },
         onFailure: function(error) {
           console.log(error);
         }
       });
+    }
+
+    _this.vueapp.selected = [];
+    _this.vueapp.failedSelectedCount = null;
     },
     loadData: function () {
       var vueapp = new Vue({
         el: "#app",
         vuetify: new Vuetify(),
         data: {
+          arrobj: [],
+          failedStatus: false,
           snackbar_success: false,
           snackbar_error: false,
           snackbarMsg : "",
@@ -1650,89 +1681,12 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             globalSearch: "",
             details:[],
             selected: [],
-            headers1: [
-              {
-                text: "Sr. No.",
-                value: "sno",
-                width: "92px",
-              },
-              {
-                text: "Name",
-                align: "start",
-                //   width: '200px',
-                value: "maName",
-              },
-              {
-                text: "Status",
-                value: "status",
-              },
-              {
-                text: "Revision",
-                value: "revision",
-              },
-              {
-                text: "Title",
-                value: "title",
-              },
-              {
-                text: "Maturity",
-                value: "maturity",
-              },
-              {
-                text: "Description",
-                value: "description",
-              },
-              {
-                text: "CA completed time",
-                value: "caCompletedTime",
-              },
-              {
-                text: "CA Name",
-                value: "caName",
-              },
-              {
-                text: "SAP Feedback Time Stamp",
-                value: "SapFeedbackTimeStamp",
-              },
-              {
-                text: "SAP Feedback Message",
-                value: "SapFeedbackMessage",
-              }
-            ],
-            headers: [
-              {
-                text: "Sr. No.",
-                value: "sno",
-                width: "92px",
-              },
-              {
-                text: "Name",
-                align: "start",
-                // width: "200px",
-                value: "maName"
-              },
-              // { text: "Status", value: "status", width: "200px" },
-              { text: "Revision", value: "revision"},
-              { text: "Title", value: "title"},
-              { text: "Maturity", value: "maturity"},
-              { text: "Description", value: "description"},
-              {
-                text: "CA completed time",
-                value: "caCompletedTime",
-                sortable: true
-              },
-              { text: "CA Name", value: "caName"},
-              {
-                text: "SAP Feedback Time Stamp",
-                value: "SapFeedbackTimeStamp"
-              },
-              {
-                text: "SAP Feedback Message",
-                value: "SapFeedbackMessage"
-              }
-            ],
+            headers1: PLM_SAP_Integration_nls.headers1,
+            headers: PLM_SAP_Integration_nls.headers,
             time: "",
-            date: ""
+            date: "",
+            failedSelectedCount: null,
+            notFailedSelectedCount: 0
         },
         computed: {
           getDtaToBeSent(){
@@ -1741,15 +1695,14 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             console.log(a);
           },
           // checkbox method to enable only failed ones
-          
-          onlyFailed() {
-            return this.filteredData.map(x => ({
-              ...x,
-              isSelectable: x.status == PLM_SAP_Integration_nls.failed
-            }))
-          },
+          // onlyFailed() {
+            // return this.filteredData.map(x => ({
+            //   ...x,
+            //   isSelectable: x.status == PLM_SAP_Integration_nls.failed
+            // }))
+          // },
           itemsWithSno() {
-            return this.onlyFailed.map((d, index) => ({ ...d, sno: index + 1}));
+            return this.filteredData.map((d, index) => ({ ...d, sno: index + 1}));
           },
           itemsWithSno1() {
             return this.waitingTable.map((d, index) => ({ ...d, sno: index + 1 }));
@@ -1818,16 +1771,45 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           }
         },
         methods: {
+          disableRePushBtn(obj){
+            debugger
+          //   if(this.selected.length = this.filteredData.length){
+          //     this.arrObj = this.selected
+
+          // }
+            var status = obj.item.status;
+            if(obj.value == true) {
+              if(status == "Failed") {
+                this.failedSelectedCount++;
+              }
+              else{
+                this.notFailedSelectedCount++;
+              }
+            } else{
+              if(status == "Failed") {
+                this.failedSelectedCount--;
+              }
+              else{
+                this.notFailedSelectedCount--;
+              }
+            }
+            if(this.failedSelectedCount > 0 && this.notFailedSelectedCount == 0) {
+              this.failedStatus = true
+            }
+            else{
+              this.failedStatus = false
+            }
+          },
           customSort: function(items, index, isDesc) {
             items.sort((a, b) => {
-                if (index[0]=='caCompletedTime') {
+                if (index[0]==PLM_SAP_Integration_nls.caCompletedTime) {
                   if (!isDesc[0]) {
                       return new Date(b[index]) - new Date(a[index]);
                   } else {
                       return new Date(a[index]) - new Date(b[index]);
                   }
                 }
-                else if (index[0]=='sno'){
+                else if (index[0]==PLM_SAP_Integration_nls.sno){
                   if (!isDesc[0]) {
                     return b[index] - a[index];
                 } else {
@@ -1847,12 +1829,12 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             });
             return items;
           },
-          download_csv(csv, filename) {
+          download_csv(arrCSV, filename) {
             var csvFile;
             var downloadLink;
         
             // CSV FILE
-            csvFile = new Blob([csv], {type: "text/csv"});
+            csvFile = new Blob([arrCSV], {type: "text/csv"});
         
             // Download link
             downloadLink = document.createElement("a");
@@ -1871,24 +1853,21 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         
             // Lanzamos
             downloadLink.click();
-        },
-            export_table_to_csv(html, filename) {
-              var _this = this;
-          var csv = [];
-          var rows = document.querySelectorAll("table tr");
-          
+          },
+          export_table_to_csv() {
+            var _this = this;
+            var arrCSV = [];
+            var rows = document.querySelectorAll("table tr");
             for (var i = 0; i < rows.length; i++) {
-            var row = [], cols = rows[i].querySelectorAll("td, th");
-            
-                for (var j = 1; j < cols.length; j++)
+              var row = [], cols = rows[i].querySelectorAll("td, th");
+                for (var j = 1; j < cols.length; j++){
                     row.push(cols[j].innerText);
-                
-            csv.push(row.join(","));
-          }
-        
+                    arrCSV.push(row.join(","));
+                }
+            }
             // Download CSV
-            _this.download_csv(csv.join("\n"), "3DX_SAP_Integration");
-        },
+            _this.download_csv(arrCSV.join("\n"), "3DX_SAP_Integration");
+          },
           getColor(status) {
             if (status === PLM_SAP_Integration_nls.success) return "green lighten-1";
             else if (status === PLM_SAP_Integration_nls.failed) return "red lighten-1";
