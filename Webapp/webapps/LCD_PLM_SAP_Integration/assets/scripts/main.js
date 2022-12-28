@@ -38,27 +38,14 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       <h1>3DX-SAP Integration</h1>
     </div>
     <v-container>
-      <v-snackbar v-model="snackbar_success" color="success" top right :timeout="4000">
-        <p><v-icon>mdi-check-circle</v-icon>{{snackbarMsg}}</p>
+      <v-snackbar v-model="snackbar_success" v-for="item in snackbarMsg" :key="item" color="grey" top right :timeout="4000">
+        <p><v-icon>mdi-check-circle</v-icon>{{item}}</p>
         <template v-slot:action="{ attrs }">
         <v-btn
           text
           color="white"
           v-bind="attrs"
           @click="snackbar_success = false"
-        >
-        <v-icon>mdi-close</v-icon>
-        </v-btn>
-      </template>
-      </v-snackbar>
-      <v-snackbar v-model="snackbar_error" color="error" top right :timeout="4000">
-        <p><v-icon>mdi-close-circle</v-icon>{{snackbarMsg}}</p>
-        <template v-slot:action="{ attrs }">
-        <v-btn
-          text
-          color="white"
-          v-bind="attrs"
-          @click="snackbar_error = false"
         >
         <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -1258,7 +1245,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             </v-btn>
             <v-btn
               class="buttons"
-              @click="export_table_to_csv"
+              @click="export_part_data"
             >Export part data
             </v-btn>
               <v-spacer></v-spacer>
@@ -1595,7 +1582,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                             CAID :Ca_ID,
                             BOMComponentID:BOM_Comp_ID,
                             ConnectionID:Connection_ID,
-                            MaName: ma_name
+                            BOMName: ma_name
                           };
       WAFData.authenticatedRequest(_3dspaceUrl + "/LCDSAPIntegrationModeler/LCDPushToSAPServices/PushToSAP", {
         method: "POST",
@@ -1609,30 +1596,31 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         onComplete: function(myJson) {
           var returnData = JSON.parse(myJson);
           // _this.vueapp.responseData = returnData;
-          console.log("MYJSON -->" + returnData.Status);
-          if(returnData.Status == "Success") {
-            _this.vueapp.snackbar_success = true;
-            _this.vueapp.filteredData.map( x => {
-              _this.vueapp.selected.map( y =>{
-                if(x.maID == y.maID) {
-                  x.status = PLM_SAP_Integration_nls.success;
-                }
-              }
-              )
-            })
-          }
-          else {
-            _this.vueapp.snackbar_error = true;
-            _this.vueapp.filteredData.map( x => {
-              _this.vueapp.selected.map( y =>{
-                if(x.maID == y.maID) {
-                  x.status = PLM_SAP_Integration_nls.failed;
-                }
-              }
-              )
-            })
-          }
-          _this.vueapp.snackbarMsg = returnData;
+          console.log("MYJSON -->" + returnData);
+          // if(returnData.Status == "Success") {
+          //   _this.vueapp.snackbar_success = true;
+          //   _this.vueapp.filteredData.map( x => {
+          //     _this.vueapp.selected.map( y =>{
+          //       if(x.maID == y.maID) {
+          //         x.status = PLM_SAP_Integration_nls.success;
+          //       }
+          //     }
+          //     )
+          //   })
+          // }
+          // else {
+          //   _this.vueapp.snackbar_error = true;
+          //   _this.vueapp.filteredData.map( x => {
+          //     _this.vueapp.selected.map( y =>{
+          //       if(x.maID == y.maID) {
+          //         x.status = PLM_SAP_Integration_nls.failed;
+          //       }
+          //     }
+          //     )
+          //   })
+          // }
+          // _this.vueapp.snackbarMsg = returnData;
+
           // console.log("DATA RESPONCE FROM RE-PUSH--->" +returnData);
           // _this.vueapp.filteredData.map( x => {
           //   _this.vueapp.selected.map( y =>{
@@ -1645,12 +1633,28 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         },
         onFailure: function(error) {
           console.log(error);
+          alert("ERROR OCCURED!!!");
+          debugger
+          _this.vueapp.snackbarMsg.push("00 ERROR OCCURED!!!");
+          _this.vueapp.snackbarMsg.push("11 ERROR OCCURED!!!");
+          _this.vueapp.snackbarMsg.push("22 ERROR OCCURED!!!");
+
+          console.log( _this.vueapp.snackbarMsg);
+          _this.vueapp.snackbar_success = true;
+
+          _this.vueapp.filteredData.map( x => {
+            _this.vueapp.selected.map( y =>{
+              if(x.maID == y.maID) {
+                x.status = PLM_SAP_Integration_nls.failed;
+              }
+            }
+            )
+          })
         }
       });
     }
-
     _this.vueapp.selected = [];
-    _this.vueapp.failedSelectedCount = null;
+    // _this.vueapp.failedSelectedCount = null;
     },
     loadData: function () {
       var vueapp = new Vue({
@@ -1661,7 +1665,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           failedStatus: false,
           snackbar_success: false,
           snackbar_error: false,
-          snackbarMsg : "",
+          snackbarMsg : [],
             type: 1,
             active: true,
             maName: "",
@@ -1829,12 +1833,12 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             });
             return items;
           },
-          download_csv(arrCSV, filename) {
+          download_csv(csv, filename) {
             var csvFile;
             var downloadLink;
         
             // CSV FILE
-            csvFile = new Blob([arrCSV], {type: "text/csv"});
+            csvFile = new Blob([csv], {type: "text/csv"});
         
             // Download link
             downloadLink = document.createElement("a");
@@ -1854,19 +1858,22 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             // Lanzamos
             downloadLink.click();
           },
-          export_table_to_csv() {
+          export_table_to_csv(html, filename) {
+            debugger
             var _this = this;
-            var arrCSV = [];
-            var rows = document.querySelectorAll("table tr");
-            for (var i = 0; i < rows.length; i++) {
-              var row = [], cols = rows[i].querySelectorAll("td, th");
-                for (var j = 1; j < cols.length; j++){
-                    row.push(cols[j].innerText);
-                    arrCSV.push(row.join(","));
-                }
-            }
-            // Download CSV
-            _this.download_csv(arrCSV.join("\n"), "3DX_SAP_Integration");
+        var csv = [];
+        var rows = document.querySelectorAll("table tr");
+          for (var i = 0; i < rows.length; i++) {
+          var row = [], cols = rows[i].querySelectorAll("td, th");
+              for (var j = 1; j < cols.length; j++)
+                  row.push(cols[j].innerText);
+          csv.push(row.join(","));
+        }
+          // Download CSV
+          _this.download_csv(csv.join("\n"), "3DX-SAP Integration");
+      },
+          export_part_data(){
+            alert("Method to export part data as CSV.");
           },
           getColor(status) {
             if (status === PLM_SAP_Integration_nls.success) return "green lighten-1";
@@ -1913,7 +1920,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             );
           },
           rePush() {
-            myWidget.webserviceForRepush();
             this.filteredData.map( x => {
               this.selected.map( y =>{
                 if(x.maID == y.maID) {
@@ -1923,6 +1929,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               )
             }
             )
+            myWidget.webserviceForRepush();
             // this.filteredData.map(x => {
             //   x.status = "In Work";
               // this.filteredData.push(x);

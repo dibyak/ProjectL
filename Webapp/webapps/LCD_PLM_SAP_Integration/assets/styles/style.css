@@ -162,3 +162,9 @@ a, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, bo
   font: inherit;
   vertical-align: middle !important;;
 }
+.v-snack{
+  height: auto !important;
+  align-items: flex-end;
+  position: relative !important;
+  flex-direction: column;
+}
