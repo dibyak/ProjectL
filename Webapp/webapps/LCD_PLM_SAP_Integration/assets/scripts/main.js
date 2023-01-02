@@ -10,20 +10,19 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
   "css!LCD/LCDLIB/styles/materialdesignicons.min.css",
   "css!LCD/LCD_PLM_SAP_Integration/assets/styles/style.css"
 ], function ($,Vue,PlatformAPI,WAFData, Vuetify, PLM_SAP_Integration_nls) {
-  
   Vue.use(Vuetify, {});
   var myWidget = {
     onLoad: function () {
-      console.log("On Load call!!");
-      var apps = PlatformAPI.getAllApplicationConfigurations();							
-				for (var i = 0; i < apps.length; i++) {
-					if (apps[i]["propertyKey"] === "app.urls.myapps") {
-						var u = new URL(apps[i]["propertyValue"]);
-						_3dspaceUrl = u.href;
-						break;
-					}
-				}
-        console.log(_3dspaceUrl);
+      // console.log("On Load call!!");
+      // var apps = PlatformAPI.getAllApplicationConfigurations();							
+			// 	for (var i = 0; i < apps.length; i++) {
+			// 		if (apps[i]["propertyKey"] === "app.urls.myapps") {
+			// 			var u = new URL(apps[i]["propertyValue"]);
+			// 			_3dspaceUrl = u.href;
+			// 			break;
+			// 		}
+			// 	}
+      //   console.log(_3dspaceUrl);
        myWidget.webserviceToGetAllBOMComponents();
       myWidget.setVueTemplate();
       myWidget.loadData();
@@ -86,24 +85,45 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-            <v-btn
-            class="buttons"
-            @click="export_table_to_csv"
-          >Export table to CSV
-          </v-btn>
-          <v-btn
-            class="buttons"
-            @click="export_part_data"
-            :disabled="!(selected.length == 1)"
-          >Export part data
-          </v-btn>
+            <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    v-bind="attrs"
+                    v-on="on"
+                    depressed
+                    color="primary"
+                    icon
+                    class="buttons"
+                    @click="export_table_to_csv"
+                    >
+                    <v-icon>mdi-export-variant</v-icon>
+                  </v-btn>
+                </template>
+                <span>Export table to CSV</span>
+              </v-tooltip>
+              <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn
+                  v-bind="attrs"
+                  v-on="on"
+                  depressed
+                  color="primary"
+                  icon
+                  class="buttons"
+                  @click="export_part_data"
+                  :disabled="!(selected.length == 1)"
+                  >
+                  <v-icon>mdi-file-export</v-icon>
+                </v-btn>
+              </template>
+              <span>Export part data to CSV</span>
+            </v-tooltip>
               <v-spacer></v-spacer>
               <v-text-field
               class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
+                label="Search..."
                 color="blue"
                 clear-icon="mdi-close-circle"
                 placeholder="Search..."
@@ -114,13 +134,23 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 @click:clear="clear"
               >
               </v-text-field>
-              <v-btn
-                type="button"
-                id="searchbtn"
-                color="#EEEEEE"
-                @click="searchTable"
-                >Search</v-btn
-              >
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    v-bind="attrs"
+                    v-on="on"
+                    depressed
+                    color="primary"
+                    icon
+                    class="buttons"
+                    @click="searchTable"
+                    id="searchbtn"
+                    >
+                    <v-icon>mdi-magnify</v-icon>
+                  </v-btn>
+                </template>
+                <span>Search</span>
+              </v-tooltip>
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
@@ -383,24 +413,45 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-            <v-btn
-            class="buttons"
-            @click="export_table_to_csv"
-          >Export table to CSV
-          </v-btn>
-          <v-btn
-            class="buttons"
-            @click="export_part_data"
-            :disabled="!(selected.length == 1)"
-          >Export part data
-          </v-btn>
+            <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    v-bind="attrs"
+                    v-on="on"
+                    depressed
+                    color="primary"
+                    icon
+                    class="buttons"
+                    @click="export_table_to_csv"
+                    >
+                    <v-icon>mdi-export-variant</v-icon>
+                  </v-btn>
+                </template>
+                <span>Export table to CSV</span>
+              </v-tooltip>
+              <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn
+                  v-bind="attrs"
+                  v-on="on"
+                  depressed
+                  color="primary"
+                  icon
+                  class="buttons"
+                  @click="export_part_data"
+                  :disabled="!(selected.length == 1)"
+                  >
+                  <v-icon>mdi-file-export</v-icon>
+                </v-btn>
+              </template>
+              <span>Export part data to CSV</span>
+            </v-tooltip>
               <v-spacer></v-spacer>
               <v-text-field
               class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
+                label="Search..."
                 color="blue"
                 clear-icon="mdi-close-circle"
                 placeholder="Search..."
@@ -411,13 +462,23 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 @click:clear="clear"
               >
               </v-text-field>
-              <v-btn
-                type="button"
-                id="searchbtn"
-                color="#EEEEEE"
-                @click="searchTable"
-                >Search</v-btn
-              >
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    v-bind="attrs"
+                    v-on="on"
+                    depressed
+                    color="primary"
+                    icon
+                    class="buttons"
+                    @click="searchTable"
+                    id="searchbtn"
+                    >
+                    <v-icon>mdi-magnify</v-icon>
+                  </v-btn>
+                </template>
+                <span>Search</span>
+              </v-tooltip>
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
@@ -680,24 +741,45 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-            <v-btn
-            class="buttons"
-            @click="export_table_to_csv"
-          >Export table to CSV
-          </v-btn>
-          <v-btn
-            class="buttons"
-            @click="export_part_data"
-            :disabled="!(selected.length == 1)"
-          >Export part data
-          </v-btn>
+            <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    v-bind="attrs"
+                    v-on="on"
+                    depressed
+                    color="primary"
+                    icon
+                    class="buttons"
+                    @click="export_table_to_csv"
+                    >
+                    <v-icon>mdi-export-variant</v-icon>
+                  </v-btn>
+                </template>
+                <span>Export table to CSV</span>
+              </v-tooltip>
+              <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn
+                  v-bind="attrs"
+                  v-on="on"
+                  depressed
+                  color="primary"
+                  icon
+                  class="buttons"
+                  @click="export_part_data"
+                  :disabled="!(selected.length == 1)"
+                  >
+                  <v-icon>mdi-file-export</v-icon>
+                </v-btn>
+              </template>
+              <span>Export part data to CSV</span>
+            </v-tooltip>
               <v-spacer></v-spacer>
               <v-text-field
               class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
+                label="Search..."
                 color="blue"
                 clear-icon="mdi-close-circle"
                 placeholder="Search..."
@@ -708,13 +790,23 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 @click:clear="clear"
               >
               </v-text-field>
-              <v-btn
-                type="button"
-                id="searchbtn"
-                color="#EEEEEE"
-                @click="searchTable"
-                >Search</v-btn
-              >
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    v-bind="attrs"
+                    v-on="on"
+                    depressed
+                    color="primary"
+                    icon
+                    class="buttons"
+                    @click="searchTable"
+                    id="searchbtn"
+                    >
+                    <v-icon>mdi-magnify</v-icon>
+                  </v-btn>
+                </template>
+                <span>Search</span>
+              </v-tooltip>
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
@@ -978,28 +1070,59 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-            <v-btn class="buttons" @click="rePush"
-            :disabled="!failedStatus">Re-Push to SAP</v-btn
-            >
-            <v-btn
-            class="buttons"
-            @click="export_table_to_csv"
-          >Export table to CSV
-          </v-btn>
-          <v-btn
-            class="buttons"
-            @click="export_part_data"
-            :disabled="!(selected.length == 1)"
-          >Export part data
-          </v-btn>
-             
+            <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn class="buttons" @click="rePush"
+                  depressed
+                  color="primary"
+                  icon
+                  :disabled="!failedStatus"
+                  v-bind="attrs"
+                  v-on="on">
+                  <v-icon>mdi-arrow-u-up-right-bold</v-icon>
+                  </v-btn>
+                </template>
+                <span>Re-Push to SAP</span>
+              </v-tooltip>
+            <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    v-bind="attrs"
+                    v-on="on"
+                    depressed
+                    color="primary"
+                    icon
+                    class="buttons"
+                    @click="export_table_to_csv"
+                    >
+                    <v-icon>mdi-export-variant</v-icon>
+                  </v-btn>
+                </template>
+                <span>Export table to CSV</span>
+              </v-tooltip>
+              <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn
+                  v-bind="attrs"
+                  v-on="on"
+                  depressed
+                  color="primary"
+                  icon
+                  class="buttons"
+                  @click="export_part_data"
+                  :disabled="!(selected.length == 1)"
+                  >
+                  <v-icon>mdi-file-export</v-icon>
+                </v-btn>
+              </template>
+              <span>Export part data to CSV</span>
+            </v-tooltip>
               <v-spacer></v-spacer>
               <v-text-field
               class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
+                label="Search..."
                 color="blue"
                 clear-icon="mdi-close-circle"
                 placeholder="Search..."
@@ -1010,13 +1133,23 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 @click:clear="clear"
               >
               </v-text-field>
-              <v-btn
-                type="button"
-                id="searchbtn"
-                color="#EEEEEE"
-                @click="searchTable"
-                >Search</v-btn
-              >
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    v-bind="attrs"
+                    v-on="on"
+                    depressed
+                    color="primary"
+                    icon
+                    class="buttons"
+                    @click="searchTable"
+                    id="searchbtn"
+                    >
+                    <v-icon>mdi-magnify</v-icon>
+                  </v-btn>
+                </template>
+                <span>Search</span>
+              </v-tooltip>
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
@@ -1033,6 +1166,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 checkbox-color="teal lighten-2"
                 must-sort
                 @item-selected="disableRePushBtn"
+                @toggle-select-all="selectAll"
               >
                 <template v-slot:header.maName="{ header }">
                   {{ header.text }}
@@ -1280,27 +1414,59 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-              <v-btn class="buttons" @click="rePush"
-              :disabled="!failedStatus">Re-Push to SAP</v-btn
-              >
-              <v-btn
-              class="buttons"
-              @click="export_table_to_csv"
-            >Export table to CSV
-            </v-btn>
-            <v-btn
-              class="buttons"
-              @click="export_part_data"
-              :disabled="!(selected.length == 1)"
-            >Export part data
-            </v-btn>
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn class="buttons" @click="rePush"
+                  depressed
+                  color="primary"
+                  icon
+                  :disabled="!failedStatus"
+                  v-bind="attrs"
+                  v-on="on">
+                  <v-icon>mdi-arrow-u-up-right-bold</v-icon>
+                  </v-btn>
+                </template>
+                <span>Re-Push to SAP</span>
+              </v-tooltip>
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    v-bind="attrs"
+                    v-on="on"
+                    depressed
+                    color="primary"
+                    icon
+                    class="buttons"
+                    @click="export_table_to_csv"
+                    >
+                    <v-icon>mdi-export-variant</v-icon>
+                  </v-btn>
+                </template>
+                <span>Export table to CSV</span>
+              </v-tooltip>
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    v-bind="attrs"
+                    v-on="on"
+                    depressed
+                    color="primary"
+                    icon
+                    class="buttons"
+                    @click="export_part_data"
+                    :disabled="!(selected.length == 1)"
+                    >
+                    <v-icon>mdi-file-export</v-icon>
+                  </v-btn>
+                </template>
+                <span>Export part data to CSV</span>
+              </v-tooltip>
               <v-spacer></v-spacer>
               <v-text-field
               class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
+                label="Search..."
                 color="blue"
                 clear-icon="mdi-close-circle"
                 placeholder="Search..."
@@ -1311,13 +1477,24 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 @click:clear="clear"
               >
               </v-text-field>
-              <v-btn
-                type="button"
-                id="searchbtn"
-                color="#EEEEEE"
-                @click="searchTable"
-                >Search</v-btn
-              >
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    v-bind="attrs"
+                    v-on="on"
+                    depressed
+                    color="primary"
+                    icon
+                    class="buttons"
+                    @click="searchTable"
+                    id="searchbtn"
+                    >
+                    <v-icon>mdi-magnify</v-icon>
+                  </v-btn>
+                </template>
+                <span>Search</span>
+              </v-tooltip>
+             
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
@@ -1336,6 +1513,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 must-sort
                 :custom-sort="customSort"
                 @item-selected="disableRePushBtn"
+                @toggle-select-all="selectAll"
               >
               <!-- <template v-slot:item.caCompletedTime="{ item }">
                 <div class="col-8 text-truncate">
@@ -1727,7 +1905,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         data: {
           partData: [],
           snackbar_color: "success",
-          arrobj: [],
+          arrObj: [],
           failedStatus: false,
           snackbar: false,
           snackbarMsg : [],
@@ -1840,31 +2018,34 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           }
         },
         methods: {
-          disableRePushBtn(obj){
-          //   if(this.selected.length = this.filteredData.length){
-          //     this.arrObj = this.selected
-
-          // }
-            var status = obj.item.status;
-            if(obj.value == true) {
-              if(status == "Failed") {
-                this.failedSelectedCount++;
-              }
-              else{
-                this.notFailedSelectedCount++;
-              }
-            } else{
-              if(status == "Failed") {
-                this.failedSelectedCount--;
-              }
-              else{
-                this.notFailedSelectedCount--;
-              }
+          selectAll(obj1) {
+            if(!obj1.value){
+              this.arrObj = []
             }
-            if(this.failedSelectedCount > 0 && this.notFailedSelectedCount == 0) {
-              this.failedStatus = true
+            if(obj1.items.length == obj1.items.filter(x => x.status == PLM_SAP_Integration_nls.failed).length){
+                this.failedStatus = true
+            } else {
+                this.failedStatus = false
+            }
+        },
+          disableRePushBtn(obj){
+            debugger
+            if(this.selected.length == this.filteredData.length){
+              this.arrObj = this.selected
+            }
+             if(obj.value){
+              this.arrObj.push(obj.item);
             }
             else{
+              var index = this.arrObj.indexOf(obj.item);
+              this.arrObj.splice(index, 1);
+              // arrobj = arrobj.filter(item => item !== obj);
+            }
+            if(this.arrObj.filter(x => x.status !== PLM_SAP_Integration_nls.failed).length > 0){
+              this.failedStatus = false
+            } else if(this.arrObj.filter(x => x.status == PLM_SAP_Integration_nls.failed).length > 0){
+              this.failedStatus = true
+            } else {
               this.failedStatus = false
             }
           },
