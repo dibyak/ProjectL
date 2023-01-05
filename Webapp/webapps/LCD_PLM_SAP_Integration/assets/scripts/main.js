@@ -14,15 +14,15 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
   var myWidget = {
     onLoad: function () {
       // console.log("On Load call!!");
-      // var apps = PlatformAPI.getAllApplicationConfigurations();							
-			// 	for (var i = 0; i < apps.length; i++) {
-			// 		if (apps[i]["propertyKey"] === "app.urls.myapps") {
-			// 			var u = new URL(apps[i]["propertyValue"]);
-			// 			_3dspaceUrl = u.href;
-			// 			break;
-			// 		}
-			// 	}
-      //   console.log(_3dspaceUrl);
+      var apps = PlatformAPI.getAllApplicationConfigurations();							
+				for (var i = 0; i < apps.length; i++) {
+					if (apps[i]["propertyKey"] === "app.urls.myapps") {
+						var u = new URL(apps[i]["propertyValue"]);
+						_3dspaceUrl = u.href;
+						break;
+					}
+				}
+        console.log(_3dspaceUrl);
        myWidget.webserviceToGetAllBOMComponents();
       myWidget.setVueTemplate();
       myWidget.loadData();
@@ -1635,7 +1635,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
     },
     webserviceToGetAllBOMComponents: function(){
       var _this = this;
-      WAFData.authenticatedRequest(widget.getValue('webserviceURLToGetAllBOMComponents'), {
+      WAFData.authenticatedRequest(_3dspaceUrl + widget.getValue('webserviceURLToGetAllBOMComponents'), {
         method: "GET",
         accept: "application/json",
         onComplete: function(dataResp) {
@@ -1666,7 +1666,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                             BOMName: ma_name
                           };
 
-      WAFData.authenticatedRequest(widget.getValue('webserviceURLForRepush'), {
+      WAFData.authenticatedRequest(_3dspaceUrl + widget.getValue('webserviceURLForRepush'), {
         method: "POST",
         accept: "application/json",
         crossOrigin: true,
@@ -1744,7 +1744,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                               BOMComponentID:BOM_Comp_ID,
                               BOMComponentType :BOM_Comp_Type,
                             };
-      WAFData.authenticatedRequest(widget.getValue('webserviceURLToExportPartData'), {
+      WAFData.authenticatedRequest(_3dspaceUrl + widget.getValue('webserviceURLToExportPartData'), {
         method: "POST",
         accept: "application/json",
         crossOrigin: true,
