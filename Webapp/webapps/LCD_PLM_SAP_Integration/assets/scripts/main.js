@@ -26,7 +26,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
        myWidget.webserviceToGetAllBOMComponents();
       myWidget.setVueTemplate();
       myWidget.loadData();
-      // myWidget.webserviceForRepush();
     },
     setVueTemplate: () => {
       var $body = $(widget.body);
@@ -37,7 +36,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       <h1>3DX-SAP Integration</h1>
     </div>
     <v-container>
-      <v-snackbar v-model="snackbar" v-for="item in snackbarMsg" :key="item" :color="snackbar_color" top right :timeout="4000">
+    <div class="snackbar_div">
+      <v-snackbar v-model="snackbar" v-for="item in snackbarMsg" :key="item" :color="snackbarColor" top right :timeout="4000">
         <p><v-icon>mdi-check-circle</v-icon>{{item}}</p>
         <template v-slot:action="{ attrs }">
         <v-btn
@@ -50,6 +50,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         </v-btn>
       </template>
       </v-snackbar>
+    </div>
     </v-container>
       <div id="tabdiv">
         <v-tabs
@@ -60,64 +61,46 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           hide-slider
           color="black"
         >
-          <v-tab :href="'#tab-5'" active-class="indigo lighten-2">
+          <v-tab :href="'#tab-All'" active-class="teal lighten-2">
             All
           </v-tab>
-          <v-tab :href="'#tab-1'" active-class="yellow lighten-2">
+          <v-tab :href="'#tab-Waiting'" active-class="yellow lighten-2">
             Waiting
           </v-tab>
-          <v-tab :href="'#tab-2'" active-class="blue lighten-2">
+          <v-tab :href="'#tab-InWork'" active-class="blue lighten-2">
             Inwork
           </v-tab>
-          <v-tab :href="'#tab-3'" active-class="green lighten-2">
+          <v-tab :href="'#tab-Complete'" active-class="green lighten-2">
             Complete
           </v-tab>
-          <v-tab :href="'#tab-4'" active-class="red lighten-2">
+          <v-tab :href="'#tab-Failed'" active-class="red lighten-2">
             Failed
           </v-tab>
         </v-tabs>
       </div>
       <v-tabs-items v-model="model">
         <v-tab-item
-          :value="'tab-1'"
+          :value="'tab-Waiting'"
           :transition="false"
           :reverse-transition="false"
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-            <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-btn
-                    v-bind="attrs"
-                    v-on="on"
-                    depressed
-                    color="primary"
-                    icon
-                    class="buttons"
-                    @click="export_table_to_csv"
-                    >
-                    <v-icon>mdi-export-variant</v-icon>
-                  </v-btn>
-                </template>
-                <span>Export table to CSV</span>
-              </v-tooltip>
-              <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
                 <v-btn
-                  v-bind="attrs"
-                  v-on="on"
                   depressed
                   color="primary"
-                  icon
+                  class="buttons"
+                  @click="export_table_to_csv_method"
+                  >Export table to CSV
+                </v-btn>
+                <v-btn
+                  depressed
+                  color="primary"
                   class="buttons"
                   @click="export_part_data"
                   :disabled="!(selected.length == 1)"
-                  >
-                  <v-icon>mdi-file-export</v-icon>
+                  >Export part data to CSV
                 </v-btn>
-              </template>
-              <span>Export part data to CSV</span>
-            </v-tooltip>
               <v-spacer></v-spacer>
               <v-text-field
               class="globalsearch"
@@ -134,30 +117,21 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 @click:clear="clear"
               >
               </v-text-field>
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-btn
-                    v-bind="attrs"
-                    v-on="on"
+              <v-btn
                     depressed
                     color="primary"
-                    icon
                     class="buttons"
                     @click="searchTable"
                     id="searchbtn"
-                    >
-                    <v-icon>mdi-magnify</v-icon>
+                    >Search
                   </v-btn>
-                </template>
-                <span>Search</span>
-              </v-tooltip>
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
                 v-model="selected"
-                :headers="headers"
-                :items="itemsWithSno1"
-                item-key="maName"
+                :headers="headersForSeperateTab"
+                :items="methodToAddSrNoInWaitingTable"
+                item-key="BOMComponentName"
                 :search="search"
                 hide-default-footer
                 fixed-header
@@ -168,26 +142,26 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 checkbox-color="teal lighten-2"
                 must-sort
               >
-                <template v-slot:header.maName="{ header }">
+                <template v-slot:header.BOMComponentName="{ header }">
                   {{ header.text }}
                   <v-menu offset-y :close-on-content-click="false">
                     <template v-slot:activator="{ on, attrs }">
                       <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="maName ? 'primary' : ''">
+                        <v-icon small :color="BOMComponentName ? 'primary' : ''">
                           mdi-magnify-expand
                         </v-icon>
                       </v-btn>
                     </template>
                     <div style="background-color: white; width: 280px">
                       <v-text-field
-                        v-model="maName"
+                        v-model="BOMComponentName"
                         class="pa-4"
                         type="text"
                         label="Enter the search term"
                         :autofocus="true"
                       ></v-text-field>
                       <v-btn
-                        @click="maName = ''"
+                        @click="BOMComponentName = ''"
                         small
                         text
                         color="primary"
@@ -407,45 +381,27 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       </v-tabs-items>
       <v-tabs-items v-model="model">
         <v-tab-item
-          :value="'tab-2'"
+          :value="'tab-InWork'"
           :transition="false"
           :reverse-transition="false"
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-            <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-btn
-                    v-bind="attrs"
-                    v-on="on"
-                    depressed
-                    color="primary"
-                    icon
-                    class="buttons"
-                    @click="export_table_to_csv"
-                    >
-                    <v-icon>mdi-export-variant</v-icon>
-                  </v-btn>
-                </template>
-                <span>Export table to CSV</span>
-              </v-tooltip>
-              <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-btn
-                  v-bind="attrs"
-                  v-on="on"
+            <v-btn
                   depressed
                   color="primary"
-                  icon
+                  class="buttons"
+                  @click="export_table_to_csv_method"
+                  >Export table to CSV
+                </v-btn>
+                <v-btn
+                  depressed
+                  color="primary"
                   class="buttons"
                   @click="export_part_data"
                   :disabled="!(selected.length == 1)"
-                  >
-                  <v-icon>mdi-file-export</v-icon>
+                  >Export part data to CSV
                 </v-btn>
-              </template>
-              <span>Export part data to CSV</span>
-            </v-tooltip>
               <v-spacer></v-spacer>
               <v-text-field
               class="globalsearch"
@@ -462,30 +418,22 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 @click:clear="clear"
               >
               </v-text-field>
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
                   <v-btn
-                    v-bind="attrs"
-                    v-on="on"
                     depressed
                     color="primary"
-                    icon
                     class="buttons"
                     @click="searchTable"
                     id="searchbtn"
                     >
-                    <v-icon>mdi-magnify</v-icon>
+                    Search
                   </v-btn>
-                </template>
-                <span>Search</span>
-              </v-tooltip>
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
                 v-model="selected"
-                :headers="headers"
-                :items="itemsWithSno2"
-                item-key="maName"
+                :headers="headersForSeperateTab"
+                :items="methodToAddSrNoInInWorkTable"
+                item-key="BOMComponentName"
                 :search="search"
                 hide-default-footer
                 fixed-header
@@ -496,26 +444,26 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 checkbox-color="teal lighten-2"
                 must-sort
               >
-                <template v-slot:header.maName="{ header }">
+                <template v-slot:header.BOMComponentName="{ header }">
                   {{ header.text }}
                   <v-menu offset-y :close-on-content-click="false">
                     <template v-slot:activator="{ on, attrs }">
                       <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="maName ? 'primary' : ''">
+                        <v-icon small :color="BOMComponentName ? 'primary' : ''">
                           mdi-magnify-expand
                         </v-icon>
                       </v-btn>
                     </template>
                     <div style="background-color: white; width: 280px">
                       <v-text-field
-                        v-model="maName"
+                        v-model="BOMComponentName"
                         class="pa-4"
                         type="text"
                         label="Enter the search term"
                         :autofocus="true"
                       ></v-text-field>
                       <v-btn
-                        @click="maName = ''"
+                        @click="BOMComponentName = ''"
                         small
                         text
                         color="primary"
@@ -735,45 +683,27 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       </v-tabs-items>
       <v-tabs-items v-model="model">
         <v-tab-item
-          :value="'tab-3'"
+          :value="'tab-Complete'"
           :transition="false"
           :reverse-transition="false"
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-            <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-btn
-                    v-bind="attrs"
-                    v-on="on"
-                    depressed
-                    color="primary"
-                    icon
-                    class="buttons"
-                    @click="export_table_to_csv"
-                    >
-                    <v-icon>mdi-export-variant</v-icon>
-                  </v-btn>
-                </template>
-                <span>Export table to CSV</span>
-              </v-tooltip>
-              <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-btn
-                  v-bind="attrs"
-                  v-on="on"
+            <v-btn
                   depressed
                   color="primary"
-                  icon
+                  class="buttons"
+                  @click="export_table_to_csv_method"
+                  >Export table to CSV
+                </v-btn>
+                <v-btn
+                  depressed
+                  color="primary"
                   class="buttons"
                   @click="export_part_data"
                   :disabled="!(selected.length == 1)"
-                  >
-                  <v-icon>mdi-file-export</v-icon>
+                  >Export part data to CSV
                 </v-btn>
-              </template>
-              <span>Export part data to CSV</span>
-            </v-tooltip>
               <v-spacer></v-spacer>
               <v-text-field
               class="globalsearch"
@@ -790,30 +720,21 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 @click:clear="clear"
               >
               </v-text-field>
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
                   <v-btn
-                    v-bind="attrs"
-                    v-on="on"
                     depressed
                     color="primary"
-                    icon
                     class="buttons"
                     @click="searchTable"
                     id="searchbtn"
-                    >
-                    <v-icon>mdi-magnify</v-icon>
+                    >Search
                   </v-btn>
-                </template>
-                <span>Search</span>
-              </v-tooltip>
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
                 v-model="selected"
-                :headers="headers"
-                :items="itemsWithSno3"
-                item-key="maName"
+                :headers="headersForSeperateTab"
+                :items="methodToAddSrNoInCompleteTable"
+                item-key="BOMComponentName"
                 :search="search"
                 hide-default-footer
                 fixed-header
@@ -824,26 +745,26 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 checkbox-color="teal lighten-2"
                 must-sort
               >
-                <template v-slot:header.maName="{ header }">
+                <template v-slot:header.BOMComponentName="{ header }">
                   {{ header.text }}
                   <v-menu offset-y :close-on-content-click="false">
                     <template v-slot:activator="{ on, attrs }">
                       <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="maName ? 'primary' : ''">
+                        <v-icon small :color="BOMComponentName ? 'primary' : ''">
                           mdi-magnify-expand
                         </v-icon>
                       </v-btn>
                     </template>
                     <div style="background-color: white; width: 280px">
                       <v-text-field
-                        v-model="maName"
+                        v-model="BOMComponentName"
                         class="pa-4"
                         type="text"
                         label="Enter the search term"
                         :autofocus="true"
                       ></v-text-field>
                       <v-btn
-                        @click="maName = ''"
+                        @click="BOMComponentName = ''"
                         small
                         text
                         color="primary"
@@ -1064,59 +985,33 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       </v-tabs-items>
       <v-tabs-items v-model="model">
         <v-tab-item
-          :value="'tab-4'"
+          :value="'tab-Failed'"
           :transition="false"
           :reverse-transition="false"
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-            <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-btn class="buttons" @click="rePush"
+                  <v-btn class="buttons" @click="rePushToSAPMethod"
                   depressed
                   color="primary"
-                  icon
-                  :disabled="!failedStatus"
-                  v-bind="attrs"
-                  v-on="on">
-                  <v-icon>mdi-arrow-u-up-right-bold</v-icon>
+                  :disabled="!failedStatus">
+                  Re push to SAP
                   </v-btn>
-                </template>
-                <span>Re-Push to SAP</span>
-              </v-tooltip>
-            <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-btn
-                    v-bind="attrs"
-                    v-on="on"
-                    depressed
-                    color="primary"
-                    icon
-                    class="buttons"
-                    @click="export_table_to_csv"
-                    >
-                    <v-icon>mdi-export-variant</v-icon>
-                  </v-btn>
-                </template>
-                <span>Export table to CSV</span>
-              </v-tooltip>
-              <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-btn
-                  v-bind="attrs"
-                  v-on="on"
-                  depressed
-                  color="primary"
-                  icon
-                  class="buttons"
-                  @click="export_part_data"
-                  :disabled="!(selected.length == 1)"
-                  >
-                  <v-icon>mdi-file-export</v-icon>
-                </v-btn>
-              </template>
-              <span>Export part data to CSV</span>
-            </v-tooltip>
+              <v-btn
+              depressed
+              color="primary"
+              class="buttons"
+              @click="export_table_to_csv_method"
+              >Export table to CSV
+            </v-btn>
+            <v-btn
+              depressed
+              color="primary"
+              class="buttons"
+              @click="export_part_data"
+              :disabled="!(selected.length == 1)"
+              >Export part data to CSV
+            </v-btn>
               <v-spacer></v-spacer>
               <v-text-field
               class="globalsearch"
@@ -1133,30 +1028,24 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 @click:clear="clear"
               >
               </v-text-field>
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
                   <v-btn
-                    v-bind="attrs"
-                    v-on="on"
                     depressed
                     color="primary"
-                    icon
                     class="buttons"
                     @click="searchTable"
                     id="searchbtn"
                     >
-                    <v-icon>mdi-magnify</v-icon>
+                    Search
                   </v-btn>
-                </template>
-                <span>Search</span>
+                </span>
               </v-tooltip>
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
                 v-model="selected"
-                :headers="headers"
-                :items="itemsWithSno4"
-                item-key="maName"
+                :headers="headersForSeperateTab"
+                :items="methodToAddSrNoInFailedTable"
+                item-key="BOMComponentName"
                 :search="search"
                 hide-default-footer
                 fixed-header
@@ -1165,29 +1054,29 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 elevation="8"
                 checkbox-color="teal lighten-2"
                 must-sort
-                @item-selected="disableRePushBtn"
-                @toggle-select-all="selectAll"
+                @item-selected="methodToDisableRepushBtnOnSelect"
+                @toggle-select-all="methodToDisableRepushBtnOnSelectAll"
               >
-                <template v-slot:header.maName="{ header }">
+                <template v-slot:header.BOMComponentName="{ header }">
                   {{ header.text }}
                   <v-menu offset-y :close-on-content-click="false">
                     <template v-slot:activator="{ on, attrs }">
                       <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="maName ? 'primary' : ''">
+                        <v-icon small :color="BOMComponentName ? 'primary' : ''">
                           mdi-magnify-expand
                         </v-icon>
                       </v-btn>
                     </template>
                     <div style="background-color: white; width: 280px">
                       <v-text-field
-                        v-model="maName"
+                        v-model="BOMComponentName"
                         class="pa-4"
                         type="text"
                         label="Enter the search term"
                         :autofocus="true"
                       ></v-text-field>
                       <v-btn
-                        @click="maName = ''"
+                        @click="BOMComponentName = ''"
                         small
                         text
                         color="primary"
@@ -1408,59 +1297,33 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       </v-tabs-items>
       <v-tabs-items v-model="model">
         <v-tab-item
-          :value="'tab-5'"
+          :value="'tab-All'"
           :transition="false"
           :reverse-transition="false"
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-btn class="buttons" @click="rePush"
-                  depressed
+                  <v-btn class="buttons" @click="rePushToSAPMethod"
                   color="primary"
-                  icon
-                  :disabled="!failedStatus"
-                  v-bind="attrs"
-                  v-on="on">
-                  <v-icon>mdi-arrow-u-up-right-bold</v-icon>
+                  depressed
+                  :disabled="!failedStatus">
+                  Re-push to SAP
                   </v-btn>
-                </template>
-                <span>Re-Push to SAP</span>
-              </v-tooltip>
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
                   <v-btn
-                    v-bind="attrs"
-                    v-on="on"
                     depressed
                     color="primary"
-                    icon
                     class="buttons"
-                    @click="export_table_to_csv"
-                    >
-                    <v-icon>mdi-export-variant</v-icon>
+                    @click="export_table_to_csv_method"
+                    >Export table to CSV
                   </v-btn>
-                </template>
-                <span>Export table to CSV</span>
-              </v-tooltip>
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
                   <v-btn
-                    v-bind="attrs"
-                    v-on="on"
                     depressed
                     color="primary"
-                    icon
                     class="buttons"
                     @click="export_part_data"
                     :disabled="!(selected.length == 1)"
-                    >
-                    <v-icon>mdi-file-export</v-icon>
+                    >Export part data to CSV
                   </v-btn>
-                </template>
-                <span>Export part data to CSV</span>
-              </v-tooltip>
               <v-spacer></v-spacer>
               <v-text-field
               class="globalsearch"
@@ -1475,34 +1338,26 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 centered
                 clearable
                 @click:clear="clear"
+                @keydown.enter="searchTable"
               >
               </v-text-field>
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
                   <v-btn
-                    v-bind="attrs"
-                    v-on="on"
                     depressed
                     color="primary"
-                    icon
                     class="buttons"
                     @click="searchTable"
                     id="searchbtn"
-                    >
-                    <v-icon>mdi-magnify</v-icon>
+                    >Search
                   </v-btn>
-                </template>
-                <span>Search</span>
-              </v-tooltip>
              
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
                 display: block
                 v-model="selected"
-                :headers="headers1"
-                :items="itemsWithSno"
-                item-key="maName"
+                :headers="headersForAllInOneTab"
+                :items="methodToAddSrNoInAllTab"
+                item-key="BOMComponentName"
                 :search="search"
                 fixed-header
                 height= "auto"
@@ -1511,9 +1366,9 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 checkbox-color="teal lighten-2"
                 resizable="true"
                 must-sort
-                :custom-sort="customSort"
-                @item-selected="disableRePushBtn"
-                @toggle-select-all="selectAll"
+                :custom-sort="methodtodoCustomSortinTable"
+                @item-selected="methodToDisableRepushBtnOnSelect"
+                @toggle-select-all="methodToDisableRepushBtnOnSelectAll"
               >
               <!-- <template v-slot:item.caCompletedTime="{ item }">
                 <div class="col-8 text-truncate">
@@ -1521,16 +1376,16 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 </div>
                 </template> -->
                 <template v-slot:item.status="{ item }">
-                  <v-chip :color="getColor(item.status)">
+                  <v-chip :color="getStatusColor(item.status)">
                     {{ item.status }}
                   </v-chip>
                 </template>
-                <template v-slot:header.maName="{ header }">
+                <template v-slot:header.BOMComponentName="{ header }">
                   {{ header.text }}
                   <v-menu offset-y :close-on-content-click="false">
                     <template v-slot:activator="{ on, attrs }">
                       <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="maName ? 'primary' : ''">
+                        <v-icon small :color="BOMComponentName ? 'primary' : ''">
                           mdi-magnify-expand
                         </v-icon>
                       </v-btn>
@@ -1540,13 +1395,13 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                         id="colfilter"
                         full-width
                         placeholder="Enter the search term"
-                        v-model="maName"
+                        v-model="BOMComponentName"
                         class="pa-4"
                         type="text"
                         :autofocus="true"
                       ></v-text-field>
                       <v-btn
-                        @click="maName = ''"
+                        @click="BOMComponentName = ''"
                         small
                         text
                         color="primary"
@@ -1785,8 +1640,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         accept: "application/json",
         onComplete: function(dataResp) {
           var data = JSON.parse(dataResp);
-          _this.vueapp.details = data;
-          _this.vueapp.filterData = data;
+          _this.vueapp.BOMComponentsReceivedFromWS = data;
+          _this.vueapp.arrFilterData = data;
         },
         onFailure: function(error) {
           console.log(error);
@@ -1794,18 +1649,17 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       });
     },
     webserviceForRepush: function(){
-      debugger
       var _this = this;
-      // _this.vueapp.snackbar_color = "success";
+      // _this.vueapp.snackbarColor = "success";
       // _this.vueapp.snackbar = true;
       // _this.vueapp.snackbarMsg.push("SUCCESS!!");
-      // let i = 0;
+      // _this.vueapp.snackbarMsg.push("SUCCESS!! DARSHIT");
       for(let i=0; i<_this.vueapp.selected.length; i++) {
-      var Ca_ID = _this.vueapp.selected[i].caID;
-            var BOM_Comp_ID = _this.vueapp.selected[i].maID;
-            var ma_name = _this.vueapp.selected[i].maName;
+            var Ca_ID = _this.vueapp.selected[i].caID;
+            var BOM_Comp_ID = _this.vueapp.selected[i].BOMComponentID;
+            var ma_name = _this.vueapp.selected[i].BOMComponentName;
             var Connection_ID = _this.vueapp.selected[i].ConnectionID;
-            var objSelected = {
+            var data_to_be_Send_from_UI = {
                             CAID :Ca_ID,
                             BOMComponentID:BOM_Comp_ID,
                             ConnectionID:Connection_ID,
@@ -1817,63 +1671,59 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         accept: "application/json",
         crossOrigin: true,
         timeout: 7000,
-        data : JSON.stringify(objSelected),
+        data : JSON.stringify(data_to_be_Send_from_UI),
         headers: {
           'Content-Type': 'application/json'
           },
           
         onComplete: function(myJson) {
-          var returnData = JSON.parse(myJson);
+          // alert("ONLOAD CALLED!!!");
+          let returnData = JSON.parse(myJson);
           // _this.vueapp.responseData = returnData;
           _this.vueapp.snackbarMsg.push(returnData);
+          // _this.vueapp.snackbarMsg.push(_this.vueapp.selected[i].BOMComponentName);
           console.log("MYJSON -->" + myJson);
-          if(_this.vueapp.snackbarMsg.response == "Success") {
+          
+          if(_this.vueapp.snackbarMsg[i].status == "Success") {
+            _this.vueapp.snackbarColor = "success";
             _this.vueapp.snackbar = true;
-            _this.vueapp.filteredData.map( x => {
+            _this.vueapp.SearchMethod.map( x => {
               _this.vueapp.selected.map( y =>{
-                if(x.maID == y.maID) {
-                  x.PLM_SAP_Integration_nls.SapFeedbackMessage = "JSON Format Validation Completed";
+                if(x.BOMComponentID == y.BOMComponentID) {
+                  x.SapFeedbackMessage = PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_success;
                 }
               }
               )
             })
           }
-          else {
-            _this.vueapp.snackbar_color = "error";
-            _this.vueapp.snackbarMsg.push(returnData);
+          else if((_this.vueapp.snackbarMsg[i].status == "Failed")){
+            _this.vueapp.snackbarColor = "error";
+            // _this.vueapp.snackbarMsg.push(returnData);
             _this.vueapp.snackbar = true;
-            _this.vueapp.filteredData.map( x => {
+            _this.vueapp.SearchMethod.map( x => {
               _this.vueapp.selected.map( y =>{
-                if(x.maID == y.maID) {
+                if(x.BOMComponentID == y.BOMComponentID) {
                   x.status = PLM_SAP_Integration_nls.failed;
-                  x.PLM_SAP_Integration_nls.SapFeedbackMessage = "JSON Format Validation failed";
+                  x.SapFeedbackMessage = PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_failed;
                 }
               }
               )
             })
           }
-        //   console.log("DATA RESPONCE FROM RE-PUSH--->" +returnData);
-        //   _this.vueapp.filteredData.map( x => {
-        //     _this.vueapp.selected.map( y =>{
-        //       if(x.maID == y.maID) {
-        //         x.SapFeedbackMessage = "JSON Format Validation Completed";
-        //       }
-        //     }
-        //     )
-        //   })
         },
         onFailure: function(error) {
           console.log(error);
           alert("ERROR OCCURED!!!");
-          _this.vueapp.snackbar_color = "error";
+          _this.vueapp.snackbarColor = "error";
           _this.vueapp.snackbarMsg.push("ERROR OCCURED!!!");
           console.log( _this.vueapp.snackbarMsg);
           _this.vueapp.snackbar = true;
 
-          _this.vueapp.filteredData.map( x => {
+          _this.vueapp.SearchMethod.map( x => {
             _this.vueapp.selected.map( y =>{
-              if(x.maID == y.maID) {
+              if(x.BOMComponentID == y.BOMComponentID) {
                 x.status = PLM_SAP_Integration_nls.failed;
+                x.SapFeedbackMessage = PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_failed;
               }
             }
             )
@@ -1881,17 +1731,32 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         }
       });
     }
-    _this.vueapp.selected = [];
+    // _this.vueapp.selected = [];
     // _this.vueapp.failedSelectedCount = null;
     },
     webserviceToExportPartData: function(){
       var _this = this;
+              var Ca_ID  = _this.vueapp.selected[0].caID;
+              var BOM_Comp_Type  ="";
+              var BOM_Comp_ID  = _this.vueapp.selected[0].BOMComponentID;
+              var dataTobeSendfromUI = {
+                              CAID :Ca_ID,
+                              BOMComponentID:BOM_Comp_ID,
+                              BOMComponentType :BOM_Comp_Type,
+                            };
       WAFData.authenticatedRequest(widget.getValue('webserviceURLToExportPartData'), {
-        method: "GET",
+        method: "POST",
         accept: "application/json",
+        crossOrigin: true,
+        timeout: 7000,
+        data : JSON.stringify(dataTobeSendfromUI),
+        headers: {
+                'Content-Type': 'application/json'
+                },
         onComplete: function(dataResp) {
           var data = JSON.parse(dataResp);
           _this.vueapp.partData = data;
+        console.table("RESPONCE ------>"+dataResp);
         },
         onFailure: function(error) {
           console.log(error);
@@ -1904,68 +1769,66 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         vuetify: new Vuetify(),
         data: {
           partData: [],
-          snackbar_color: "success",
+          snackbarColor: "success",
           arrObj: [],
           failedStatus: false,
           snackbar: false,
           snackbarMsg : [],
-            type: 1,
-            active: true,
-            maName: "",
-            status: "",
-            revision: "",
-            title: "",
-            maturity: "",
-            description: "",
-            caCompletedTime: "",
-            caName: "",
-            SapFeedbackTimeStamp: "",
-            SapFeedbackMessage: "",
-            filterData: [],
-            model: null,
-            singleSelect: false,
-            search: "",
-            globalSearch: "",
-            details:[],
-            selected: [],
-            headers1: PLM_SAP_Integration_nls.headers1,
-            headers: PLM_SAP_Integration_nls.headers,
-            time: "",
-            date: "",
-            failedSelectedCount: null,
-            notFailedSelectedCount: 0
+          type: 1,
+          // active: true,
+          BOMComponentName: "",
+          status: "",
+          revision: "",
+          title: "",
+          maturity: "",
+          description: "",
+          caCompletedTime: "",
+          caName: "",
+          SapFeedbackTimeStamp: "",
+          SapFeedbackMessage: "",
+          arrFilterData: [],
+          model: null,
+          singleSelect: false,
+          search: "",
+          globalSearch: "",
+          BOMComponentsReceivedFromWS:[],
+          selected: [],
+          headersForAllInOneTab: PLM_SAP_Integration_nls.headersForAllInOneTab,
+          headersForSeperateTab: PLM_SAP_Integration_nls.headersForSeperateTab,
+          time: "",
+          date: "",
         },
         computed: {
-          getDtaToBeSent(){
-            const a = this.selected.map((obj) => [obj.maName, obj.maID, obj.caID, obj.ConnectionID]);
-            this.maDetails = a;
-            console.log(a);
-          },
+          // methodForGettingDataForRepush(){
+          //   const a = this.selected.map((obj) => [obj.BOMComponentName, obj.BOMComponentID, obj.caID, obj.ConnectionID]);
+          //   this.maDetails = a;
+          //   console.log(a);
+          // },
           // checkbox method to enable only failed ones
           // onlyFailed() {
-            // return this.filteredData.map(x => ({
+            // return this.SearchMethod.map(x => ({
             //   ...x,
             //   isSelectable: x.status == PLM_SAP_Integration_nls.failed
             // }))
           // },
-          itemsWithSno() {
-            return this.filteredData.map((d, index) => ({ ...d, sno: index + 1}));
+          methodToAddSrNoInAllTab() {
+            return this.SearchMethod.map((d, index) => ({ ...d, sno: index + 1}));
           },
-          itemsWithSno1() {
-            return this.waitingTable.map((d, index) => ({ ...d, sno: index + 1 }));
+          methodToAddSrNoInWaitingTable() {
+            return this.methodToGetWaitingTable.map((d, index) => ({ ...d, sno: index + 1 }));
           },
-          itemsWithSno2() {
-            return this.inworkTable.map((d, index) => ({ ...d, sno: index + 1 }));
+          methodToAddSrNoInInWorkTable() {
+            return this.methodToGetInWorkTable.map((d, index) => ({ ...d, sno: index + 1 }));
           },
-          itemsWithSno3() {
-            return this.successTable.map((d, index) => ({ ...d, sno: index + 1 }));
+          methodToAddSrNoInCompleteTable() {
+            return this.methodToGetSuccessTable.map((d, index) => ({ ...d, sno: index + 1 }));
           },
-          itemsWithSno4() {
-            return this.failedTable.map((d, index) => ({ ...d, sno: index + 1 }));
+          methodToAddSrNoInFailedTable() {
+            return this.methodToGetFailedTable.map((d, index) => ({ ...d, sno: index + 1 }));
           },
-          filteredData() {
+          SearchMethod() {
             let conditions = [];
-            if (this.maName) {
+            if (this.BOMComponentName) {
               conditions.push(this.filtermaName);
             }
             if (this.status) {
@@ -1996,29 +1859,29 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               conditions.push(this.filterSapFeedbackMessage);
             }
             if (conditions.length > 0) {
-              return this.filterData.filter(name => {
+              return this.arrFilterData.filter(name => {
                 return conditions.every(condition => {
                   return condition(name);
                 });
               });
             }
-            return this.filterData;
+            return this.arrFilterData;
           },
-          successTable() {
-            return this.filteredData.filter(x => x.status == PLM_SAP_Integration_nls.success);
+          methodToGetSuccessTable() {
+            return this.SearchMethod.filter(x => x.status == PLM_SAP_Integration_nls.success);
           },
-          failedTable() {
-            return this.filteredData.filter(x => x.status == PLM_SAP_Integration_nls.failed);
+          methodToGetFailedTable() {
+            return this.SearchMethod.filter(x => x.status == PLM_SAP_Integration_nls.failed);
           },
-          waitingTable() {
-            return this.filteredData.filter(x => x.status == PLM_SAP_Integration_nls.waiting);
+          methodToGetWaitingTable() {
+            return this.SearchMethod.filter(x => x.status == PLM_SAP_Integration_nls.waiting);
           },
-          inworkTable() {
-            return this.filteredData.filter(x => x.status == PLM_SAP_Integration_nls.inWork);
+          methodToGetInWorkTable() {
+            return this.SearchMethod.filter(x => x.status == PLM_SAP_Integration_nls.inWork);
           }
         },
         methods: {
-          selectAll(obj1) {
+          methodToDisableRepushBtnOnSelectAll(obj1) {
             if(!obj1.value){
               this.arrObj = []
             }
@@ -2028,9 +1891,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 this.failedStatus = false
             }
         },
-          disableRePushBtn(obj){
-            debugger
-            if(this.selected.length == this.filteredData.length){
+          methodToDisableRepushBtnOnSelect(obj){
+            if(this.selected.length == this.SearchMethod.length){
               this.arrObj = this.selected
             }
              if(obj.value){
@@ -2049,7 +1911,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               this.failedStatus = false
             }
           },
-          customSort: function(items, index, isDesc) {
+          methodtodoCustomSortinTable: function(items, index, isDesc) {
             items.sort((a, b) => {
                 if (index[0]==PLM_SAP_Integration_nls.caCompletedTime) {
                   if (!isDesc[0]) {
@@ -2078,7 +1940,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             });
             return items;
           },
-          download_csv(csv, filename) {
+          download_csv_of_tabledata(csv, filename) {
             var csvFile;
             var downloadLink;
         
@@ -2088,49 +1950,46 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             // Download link
             downloadLink = document.createElement("a");
         
-            // File name
             downloadLink.download = filename;
         
-            // We have to create a link to the file
             downloadLink.href = window.URL.createObjectURL(csvFile);
         
-            // Make sure that the link is not displayed
             downloadLink.style.display = "none";
         
-            // Add the link to your DOM
             document.body.appendChild(downloadLink);
         
-            // Lanzamos
             downloadLink.click();
           },
-          export_table_to_csv(html, filename) {
+          export_table_to_csv_method(html, filename) {
             var _this = this;
             var csv = [];
+            // var csv = this.selected;
             var rows = document.querySelectorAll("table tr");
-              for (var i = 0; i < rows.length; i++) {
-                var row = [], cols = rows[i].querySelectorAll("td, th");
-                  for (var j = 1; j < cols.length; j++){
-                      row.push(cols[j].innerText);
-                      csv.push(row.join(","));
-                  }
-              }
-              // Download CSV
-              _this.download_csv(csv.join("\n"), "3DX-SAP Integration");
-          },
+        
+            for (var i = 0; i < rows.length; i++) {
+            var row = [], cols = rows[i].querySelectorAll("td, th");
+          
+              for (var j = 1; j < cols.length; j++)
+                  row.push(cols[j].innerText);
+              
+          csv.push(row.join(","));
+        }
+      // Download CSV
+          // _this.download_csv_of_tabledata(csv.join("\n"), filename);
+          _this.download_csv_of_tabledata(csv.join("\n"), "3DX-SAP Integration");
+      },
           export_part_data(){
-            var _this = this;
-            alert("Method to export part data as CSV.");
             myWidget.webserviceToExportPartData();
-            _this.download_csv(this.partData.join("\n"), "Sub contract part");
+            // _this.download_csv_of_tabledata(this.partData.join("\n"), "Sub contract part");
           },
-          getColor(status) {
+          getStatusColor(status) {
             if (status === PLM_SAP_Integration_nls.success) return "green lighten-1";
             else if (status === PLM_SAP_Integration_nls.failed) return "red lighten-1";
             else if (status === PLM_SAP_Integration_nls.inWork) return "blue lighten-1";
             else if (status === PLM_SAP_Integration_nls.waiting) return "yellow lighten-1";
           },
           filtermaName(item) {
-            return item.maName.toLowerCase().includes(this.maName.toLowerCase());
+            return item.BOMComponentName.toLowerCase().includes(this.BOMComponentName.toLowerCase());
           },
           filterStatus(item) {
             return item.status.toLowerCase().includes(this.status.toLowerCase());
@@ -2167,10 +2026,10 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               this.SapFeedbackMessage.toLowerCase()
             );
           },
-          rePush() {
-            this.filteredData.map( x => {
+          rePushToSAPMethod() {
+            this.SearchMethod.map( x => {
               this.selected.map( y =>{
-                if(x.maID == y.maID) {
+                if(x.BOMComponentID == y.BOMComponentID) {
                   x.status = PLM_SAP_Integration_nls.inWork;
                 }
               }
@@ -2178,28 +2037,17 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             }
             )
             myWidget.webserviceForRepush();
-            // this.filteredData.map(x => {
-            //   x.status = "In Work";
-              // this.filteredData.push(x);
-              // this.failedTable.map(x);
-              // const index = this.employees.indexOf(this.se[i]);
-              // this.failedTable.splice(x, 1);
-            // });
-            // for (var i = 0; i < this.selected.length; i++) {
-            //   const index = this.failedTable.indexOf(this.selected[i]);
-            //   this.failedTable.splice(index, 1);
-            // }
           },
           clear() {
-            this.filterData = this.details;
+            this.arrFilterData = this.BOMComponentsReceivedFromWS;
           },
           searchTable() {
             if (this.globalSearch === "" || this.globalSearch === null) {
-              this.filterData = this.details;
+              this.arrFilterData = this.BOMComponentsReceivedFromWS;
             } else {
-              return this.filterData = this.details.filter(data => {
+              return this.arrFilterData = this.BOMComponentsReceivedFromWS.filter(data => {
                 return (
-                  data.maName
+                  data.BOMComponentName
                     .toLowerCase()
                     .includes(this.globalSearch.toLowerCase()) ||
                   data.status
@@ -2235,7 +2083,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           }
         },
         mounted() {
-          // this.filterData = this.details;
+          // this.arrFilterData = this.BOMComponentsReceivedFromWS;
           // get a new date (locale machine date time)
           var date1 = new Date();
           const yyyy = date1.getFullYear();

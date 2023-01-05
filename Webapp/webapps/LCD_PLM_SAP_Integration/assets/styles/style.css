@@ -39,7 +39,7 @@ tr:nth-child(even) {
 #searchbtn {
   border-radius: 11px;
   /* margin: 0% 0% 0% 18%; */
-  background-color: #EEEEEE !important;
+  /* background-color: #EEEEEE !important; */
   margin-bottom: 15px !important;
   color: white;
   /* margin-top: 10px !important; */
@@ -105,10 +105,10 @@ tr:nth-child(even) {
 }
 .buttons {
   /* margin-left: 500px !important; */
-  margin-right: 20px !important;
+  margin-right: 10px !important;
   margin-top: 10px !important;
-  background-color: #EEEEEE !important;
-  color: white !important;
+  background-color: #1976d2 !important;
+  /* color: white !important; */
   border-radius: 11px;
 }
 .v-tab {
@@ -156,7 +156,7 @@ tr:nth-child(even) {
 .v-data-footer__select {
   width: 70px !important;
 }
-a, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, hgroup, html, i, iframe, img, ins, kbd, label, legend, mark, nav, nav li, nav ul, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, var, video {
+a, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, hgroup, i, iframe, img, ins, kbd, label, legend, mark, nav, nav li, nav ul, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, var, video {
   margin: 0;
   padding: 0;
   border: 0;
@@ -172,3 +172,13 @@ a, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, bo
 h1{
   margin: 0.5%;
 }
+.snackbar_div{
+  position:fixed; 
+  z-index: 1000; 
+  display: inline;
+  left: 82%;
+  top: 5%;
+}
+/* .v-snack--top{
+  top:5%;
+} */
