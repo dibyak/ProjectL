@@ -18,6 +18,8 @@ import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonReader;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -34,6 +36,7 @@ import com.matrixone.apps.domain.DomainObject;
 import com.matrixone.apps.domain.DomainRelationship;
 import com.matrixone.apps.domain.util.ContextUtil;
 import com.matrixone.apps.domain.util.EnoviaResourceBundle;
+import com.matrixone.apps.domain.util.FrameworkException;
 import com.matrixone.apps.domain.util.FrameworkUtil;
 import com.matrixone.apps.domain.util.MapList;
 import com.matrixone.apps.domain.util.MqlUtil;
@@ -52,7 +55,7 @@ import org.apache.http.util.EntityUtils;
 import matrix.db.BusinessObject;
 import matrix.db.Context;
 import matrix.db.JPO;
-import matrix.util.DateFormatUtil;
+import matrix.util.MatrixException;
 import matrix.util.Pattern;
 import matrix.util.StringList;
 
@@ -65,6 +68,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	public static final String TYPE_LCD_BOM_ANCHOR_OBJECT = "LCD_BOMAnchorObject";
 	public static final String NAME_LCD_ANCHOR_OBJECT = "LCD_AnchorObject";
 	public static final String REV_LCD_ANCHOR_OBJECT = "A";
+	public static final String POLICY_LCD_3DX_SAP_INTEGRATION = "LCD_3DXSAPIntegration";
 	public static final String REL_LCD_SAP_BOM_INTERFACE = "LCD_SAPBOMInterface";
 	public static final String VAULT_ESERVICE_PRODUCTION = "eService Production";
 
@@ -76,6 +80,10 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	public static final String STATUS_COMPLETE = "Complete";
 	public static final String STATUS_IN_WORK = "In Work";
 	public static final String STATUS_FAILED = "Failed";
+	public static final String STATUS_WAITING = "Waiting";
+
+	private static final String MSG_JSON_FORMAT_VALIDATION_FAILED = "JSON Format Validation Failed";
+	private static final String MSG_JSON_FORMAT_VALIDATION_COMPLETED = "JSON Format Validation Completed";
 
 	public static final String KEY_CONNECTION_ID = "ConnectionID";
 	public static final String KEY_BOM_COMPONENT_ID = "BOMComponentID";
@@ -96,12 +104,94 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	private static JsonObject changeActionJson;
 	private static String caReleasedDate;
 	private static boolean subContractStatus;
-	private static JsonObjectBuilder changeActionJsonBuilder;
-
 	private static String subContractRelId;
 
 	private static HashMap<String, JsonObjectBuilder> changeActionMap = new HashMap<>();
 
+	/**
+	 * Main Method.
+	 * 
+	 * @param context
+	 * @return
+	 * @throws Exception
+	 */
+	public void scheduledPushToSAP(Context context, String[] strArgs) throws Exception {
+		
+		
+		boolean isPresent = checkAncObjPresent(context);
+		if(isPresent) {
+			MapList bomComponentsMapList = findRelevantObjectsConnectedToAnchorObject(context);
+			pushToSAP(context, bomComponentsMapList);
+		}
+	}
+	
+	/**
+	 * This Method is check if Anchor Object is present.
+	 * 
+	 * @param context
+	 * @return
+	 * @throws Exception
+	 */
+	private boolean checkAncObjPresent(Context context) throws MatrixException {
+		boolean isPresent;
+		
+		BusinessObject busObjAchor = new BusinessObject(TYPE_LCD_BOM_ANCHOR_OBJECT,
+				NAME_LCD_ANCHOR_OBJECT,
+				REV_LCD_ANCHOR_OBJECT,
+				VAULT_ESERVICE_PRODUCTION);
+		
+		if(busObjAchor.exists(context)) {
+			isPresent = true;
+		}else {
+			isPresent = false;
+			DomainObject domObjBomAncOcj = DomainObject.newInstance(context, TYPE_LCD_BOM_ANCHOR_OBJECT);
+			domObjBomAncOcj.createObject(context, TYPE_LCD_BOM_ANCHOR_OBJECT, NAME_LCD_ANCHOR_OBJECT, REV_LCD_ANCHOR_OBJECT, POLICY_LCD_3DX_SAP_INTEGRATION, VAULT_ESERVICE_PRODUCTION);		
+		}
+		return isPresent;
+	}
+
+	/**
+	 * This Method is to Push BOM Components to SAP.
+	 * 
+	 * @param context
+	 * @return
+	 * @throws Exception
+	 */
+	private void pushToSAP(Context context, MapList bomComponentsMapList) throws Exception {
+
+		Iterator<?> iterMAsMaplist = bomComponentsMapList.iterator();
+		int intResponseCode = 0;
+
+		while (iterMAsMaplist.hasNext()) {
+			Map<?, ?> item = (Map<?, ?>) iterMAsMaplist.next();
+			String strConnectionId = (String) (item.get(DomainRelationship.SELECT_ID));
+			String strBOMComponentId = (String) (item.get(DomainConstants.SELECT_ID));
+			String strBOMComponentType = (String) (item.get(DomainConstants.SELECT_TYPE));
+			String strbomModified = (String) (item.get(ATTR_MODIFIED));
+
+			DomainRelationship domRelBOMComponents = DomainRelationship.newInstance(context, strConnectionId);
+
+			String strProcessStatusFlag = domRelBOMComponents.getAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG);
+			String strCAID = domRelBOMComponents.getAttributeValue(context, ATTR_LCD_CAID);
+
+			if (strProcessStatusFlag.equalsIgnoreCase(STATUS_WAITING)) {
+				if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strBOMComponentType)) {
+					intResponseCode = sendToSAP(context, strBOMComponentId, strBOMComponentType, strCAID);
+					processWebServiceResponseForManufacturingAssembly(context, intResponseCode, strConnectionId);
+
+				} else {
+					Map<?, ?> mLinkedCadPart = getLinkedCADPartFromMBOMPart(context, strBOMComponentId, REL_PROVIDE);
+					String strProcurementIntent = (String) mLinkedCadPart.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
+					if (SUBCONTRACT.equalsIgnoreCase(strProcurementIntent)) {
+						intResponseCode = processSubContractPart(context, mLinkedCadPart, strConnectionId);
+						processWebServiceResponseForSubContract(context, intResponseCode, strConnectionId);
+					}
+				}
+			} else if (strProcessStatusFlag.equalsIgnoreCase(STATUS_COMPLETE)) {
+				disconnectExpiredObjectsFromAnchorObject(context, strConnectionId, strbomModified);
+			}
+		}
+	}
 
 	/**
 	 * This Method is to get Relevant BOM Components which are connected with Anchor
@@ -111,8 +201,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @return
 	 * @throws Exception
 	 */
-
-	public void FindRelevantObjectsConnectedToAnchorObject(Context context) throws Exception {
+	private MapList findRelevantObjectsConnectedToAnchorObject(Context context) throws Exception {
 
 		BusinessObject busObjAchor = new BusinessObject(TYPE_LCD_BOM_ANCHOR_OBJECT, // String Type
 				NAME_LCD_ANCHOR_OBJECT, // String Name
@@ -129,7 +218,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 		slRelSelect.add(DomainRelationship.SELECT_ID);
 		slRelSelect.add(ATTR_MODIFIED);
 
-		MapList manAssMapList = domObj.getRelatedObjects(context, // context
+		return (domObj.getRelatedObjects(context, // context
 				REL_LCD_SAP_BOM_INTERFACE, // Relationship Pattern
 				"*", // Type Pattern
 				slObjectSelect, // Object Select
@@ -139,39 +228,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				(short) 1, // Recursion Level
 				"", // Object Where clause
 				"", // Relationship Where clause
-				0); // limit
+				0)); // limit;
 
-		Iterator<?> iterMAsMaplist = manAssMapList.iterator();
-
-		while (iterMAsMaplist.hasNext()) {
-			Map<?, ?> item = (Map<?, ?>) iterMAsMaplist.next();
-			String strConnectionId = (String) (item.get(DomainRelationship.SELECT_ID));
-			String strBOMComponentId = (String) (item.get(DomainConstants.SELECT_ID));
-			String strBOMComponentType = (String) (item.get(DomainConstants.SELECT_TYPE));
-			String strbomModified = (String) (item.get(ATTR_MODIFIED));
-
-			DomainRelationship domRelBOMComponents = DomainRelationship.newInstance(context, strConnectionId);
-
-			String strProcessStatusFlag = domRelBOMComponents.getAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG);
-			String strCAID = domRelBOMComponents.getAttributeValue(context, ATTR_LCD_CAID);
-
-			if (!(strProcessStatusFlag.equalsIgnoreCase(STATUS_COMPLETE)
-					&& strProcessStatusFlag.equalsIgnoreCase(STATUS_IN_WORK)
-					&& strProcessStatusFlag.equalsIgnoreCase(STATUS_FAILED))) {
-				if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strBOMComponentType)) {
-					SendToSAP(context, strBOMComponentId, strBOMComponentType, strCAID, strProcessStatusFlag,
-							strConnectionId);
-				} else {
-					Map<?, ?> mLinkedCadPart = getLinkedCADPartFromMBOMPart(context, strBOMComponentId, REL_PROVIDE);
-					String strProcurementIntent = (String) mLinkedCadPart.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
-					if (SUBCONTRACT.equalsIgnoreCase(strProcurementIntent)) {
-						processSubContractPart(context, mLinkedCadPart, strConnectionId);
-					}
-				}
-			} else if (strProcessStatusFlag.equalsIgnoreCase(STATUS_COMPLETE)) {
-				DisconnectExpiredObjectsFromAnchorObject(context, strConnectionId, strbomModified);
-			}
-		}
 	}
 
 	/**
@@ -182,11 +240,12 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @throws Exception
 	 */
 
-	public HashMap<?, ?> RePushFailedBomComponentsToSAP(Context context, String args[]) throws Exception {
+	public String rePushFailedBomComponentsToSAP(Context context, String[] args) throws Exception {
 
 		HashMap<?, ?> programMap = (HashMap<?, ?>) JPO.unpackArgs(args);
 		HashMap<String, String> responseMap = new HashMap<>();
-		String strResponseString = "";
+		int intResponseCode = 0;
+		String strResponse = "";
 
 		// STEP : Retrieving Input Arguments
 		String strConnectionId = (String) programMap.get(KEY_CONNECTION_ID);
@@ -198,24 +257,22 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 		StringList slObjectSelect = new StringList();
 		slObjectSelect.add(DomainConstants.SELECT_TYPE);
 
-		Map bomMap = domObj.getInfo(context, slObjectSelect);
+		Map<?, ?> bomMap = domObj.getInfo(context, slObjectSelect);
 
 		String strBOMComponentType = (String) bomMap.get(DomainConstants.SELECT_TYPE);
 
 		if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strBOMComponentType)) {
-			strResponseString = SendToSAP(context, strBOMComponentId, strBOMComponentType, strCAID, STATUS_FAILED,
-					strConnectionId);
-			System.out.println("RePushFailedBomComponentsToSAP strResponseString ------> " + strResponseString);
-			responseMap = ProcessWebServiceResponseForManufacturingAssembly(context, strResponseString,
-					strConnectionId);
+			intResponseCode = sendToSAP(context, strBOMComponentId, strBOMComponentType, strCAID);
+			System.out.println("RePushFailedBomComponentsToSAP strResponseString ------> " + intResponseCode);
 		} else {
 			Map<?, ?> mLinkedCadPart = getLinkedCADPartFromMBOMPart(context, strBOMComponentId, REL_PROVIDE);
 			String strProcurementIntent = (String) mLinkedCadPart.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
 			if (SUBCONTRACT.equalsIgnoreCase(strProcurementIntent)) {
+				intResponseCode = processSubContractPart(context, mLinkedCadPart, strConnectionId);
 			}
 		}
 		logger.writeLog("response from SAP for Re-Push faild components >>>> " + responseMap);
-		return responseMap;
+		return strResponse.valueOf(intResponseCode);
 	}
 
 	/**
@@ -227,8 +284,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @throws Exception
 	 */
 
-	public void DisconnectExpiredObjectsFromAnchorObject(Context context, String strConnectionId,
-			String strbomModified) throws Exception {
+	public void disconnectExpiredObjectsFromAnchorObject(Context context, String strConnectionId, String strbomModified)
+			throws Exception {
 
 		SimpleDateFormat sdf = new SimpleDateFormat(eMatrixDateFormat.getEMatrixDateFormat(), context.getLocale());
 		Date da = sdf.parse(strbomModified);
@@ -241,11 +298,10 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 		}
 	}
 
-	private String SendToSAP(Context context, String strBOMComponentId, String strBOMComponentType, String caId,
-			String processStatusFlag, String strConnectionId) throws Exception {
+	private int sendToSAP(Context context, String strBOMComponentId, String strBOMComponentType, String caId) throws Exception {
 
 		String strRequestString = null;
-		int intResponseString = 0;
+		int intResponseCode = 0;
 		String strResponseString = "";
 		try {
 			System.out.println("sendToSAP calledd <<<<<<<<< ");
@@ -283,7 +339,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 						// service API]
 						setChangeActionJson(joChangeAction);
 						// STEP :Log Initialization
-						LoggerInitialization(context);
+						loggerInitialization(context);
 
 						// Step : Retrieving Change Action Name from JSON Object of Change Action
 						// [output of service API]
@@ -373,11 +429,11 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 														+ " : >>> \n " + strRequestString + " \n ");
 
 												if (UIUtil.isNotNullAndNotEmpty(jEachPayloadObj.toString())) {
-													strResponseString = callPostService(context, jEachPayloadObj);
+													intResponseCode = callPostService(context, jEachPayloadObj);
 
 													jsonLogger.writeLog("Response for Discrete : <<< " + strObjTitle
 															+ " :  Payload from SAP WebService >>> \n "
-															+ intResponseString + " \n ");
+															+ intResponseCode + " \n ");
 
 												} else
 													logger.writeLog(
@@ -424,7 +480,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			httpClient.close();
 		}
 
-		return strResponseString;
+		return intResponseCode;
 	}
 
 	/**
@@ -442,78 +498,105 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 		// STEP : Creating JSON object Builder to add the change action object details
 		JsonObjectBuilder jEachPayloadBuilder = Json.createObjectBuilder();
 		try {
-			// STEP : Retrieving Change Action Details from Input Change Action JSON
 
-			DomainObject domObjChangeAction = DomainObject.newInstance(context, caId);
+			if (caId.equals(null) || caId.equals("")) {
+				// STEP : Adding Change Action object details in JSONObjectBuilder
 
-			StringList slObjectSelect = new StringList();
-			slObjectSelect.add(DomainConstants.SELECT_NAME);
-			slObjectSelect.add(DomainConstants.ATTRIBUTE_DESCRIPTION);
-			slObjectSelect.add(TITLE_CHANGEACTION);
-			slObjectSelect.add(CATEGORYOFCHANGE_CHANGEACTION);
-			slObjectSelect.add(CHANGEDOMAIN_CHANGEACTION);
-			slObjectSelect.add(PLATFORM_CHANGEACTION);
-			slObjectSelect.add(CHANGETYPE_CHANGEACTION);
-			slObjectSelect.add(REASONFORCHANGE_CHANGEACTION);
-			slObjectSelect.add(RELEASEDDATE_CHANGEACTION);
+				jEachPayloadBuilder.add(TAG_TITLE, NOT_APPLICABLE);
 
-			Map<?, ?> changeActionAttrDetails = domObjChangeAction.getInfo(context, slObjectSelect);
+				jEachPayloadBuilder.add(TAG_OID, NOT_APPLICABLE);
 
-			// STEP : Retrieving Change Action Details from Input Change Action JSON
-			caReleasedDate = (String) changeActionAttrDetails.get(RELEASEDDATE_CHANGEACTION);
-			if (UIUtil.isNotNullAndNotEmpty(caReleasedDate)) {
-				caReleasedDate = caReleasedDate.substring(0, caReleasedDate.length() - 11);
+				jEachPayloadBuilder.add(TAG_NAME, NOT_APPLICABLE);
+
+				jEachPayloadBuilder.add(TAG_DESCRIPTION, NOT_APPLICABLE);
+
+				jEachPayloadBuilder.add(TAG_CATEGORY_OF_CHANGE, NOT_APPLICABLE);
+
+				jEachPayloadBuilder.add(TAG_CHANGEDOMAIN, NOT_APPLICABLE);
+
+				jEachPayloadBuilder.add(TAG_CHANGETYPE, NOT_APPLICABLE);
+
+				jEachPayloadBuilder.add(TAG_REASONFORCHANGE, NOT_APPLICABLE);
+
+				jEachPayloadBuilder.add(TAG_PLATFORM, NOT_APPLICABLE);
+			} else {
+
+				// STEP : Retrieving Change Action Details from Input Change Action JSON
+
+				DomainObject domObjChangeAction = DomainObject.newInstance(context, caId);
+
+				StringList slObjectSelect = new StringList();
+				slObjectSelect.add(DomainConstants.SELECT_NAME);
+				slObjectSelect.add(DomainConstants.ATTRIBUTE_DESCRIPTION);
+				slObjectSelect.add(TITLE_CHANGEACTION);
+				slObjectSelect.add(CATEGORYOFCHANGE_CHANGEACTION);
+				slObjectSelect.add(CHANGEDOMAIN_CHANGEACTION);
+				slObjectSelect.add(PLATFORM_CHANGEACTION);
+				slObjectSelect.add(CHANGETYPE_CHANGEACTION);
+				slObjectSelect.add(REASONFORCHANGE_CHANGEACTION);
+				slObjectSelect.add(RELEASEDDATE_CHANGEACTION);
+				// get CA Aplicabilty
+				Map<?, ?> changeActionAttrDetails = domObjChangeAction.getInfo(context, slObjectSelect);
+
+				// STEP : Retrieving Change Action Details from Input Change Action JSON
+				caReleasedDate = (String) changeActionAttrDetails.get(RELEASEDDATE_CHANGEACTION);
 				if (UIUtil.isNotNullAndNotEmpty(caReleasedDate)) {
-					SimpleDateFormat format1 = new SimpleDateFormat("MM/dd/yyyy");
-					SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
-					Date date = format1.parse(caReleasedDate);
-					String formatDate = format2.format(date);
-					setCACompletionDate(formatDate);
+					caReleasedDate = caReleasedDate.substring(0, caReleasedDate.length() - 11);
+					if (UIUtil.isNotNullAndNotEmpty(caReleasedDate)) {
+						SimpleDateFormat format1 = new SimpleDateFormat("MM/dd/yyyy");
+						SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
+						Date date = format1.parse(caReleasedDate);
+						String formatDate = format2.format(date);
+						setCACompletionDate(formatDate);
+					}
 				}
+
+				// STEP : Adding Change Action object details in JSONObjectBuilder
+				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(TITLE_CHANGEACTION)))
+					jEachPayloadBuilder.add(TAG_TITLE, (String) changeActionAttrDetails.get(TITLE_CHANGEACTION));
+
+				if (UIUtil.isNotNullAndNotEmpty(caId))
+					jEachPayloadBuilder.add(TAG_OID, caId);
+				else
+					jEachPayloadBuilder.add(TAG_OID, " ");
+
+				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(DomainConstants.SELECT_NAME)))
+					jEachPayloadBuilder.add(TAG_NAME,
+							(String) changeActionAttrDetails.get(DomainConstants.SELECT_NAME));
+				else
+					jEachPayloadBuilder.add(TAG_NAME, " ");
+
+				if (UIUtil.isNotNullAndNotEmpty(
+						(String) changeActionAttrDetails.get(DomainConstants.ATTRIBUTE_DESCRIPTION)))
+					jEachPayloadBuilder.add(TAG_DESCRIPTION,
+							(String) changeActionAttrDetails.get(DomainConstants.ATTRIBUTE_DESCRIPTION));
+				else
+					jEachPayloadBuilder.add(TAG_DESCRIPTION, " ");
+
+				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(CATEGORYOFCHANGE_CHANGEACTION)))
+					jEachPayloadBuilder.add(TAG_CATEGORY_OF_CHANGE,
+							(String) changeActionAttrDetails.get(CATEGORYOFCHANGE_CHANGEACTION));
+
+				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(CHANGEDOMAIN_CHANGEACTION)))
+					jEachPayloadBuilder.add(TAG_CHANGEDOMAIN,
+							(String) changeActionAttrDetails.get(CHANGEDOMAIN_CHANGEACTION));
+
+				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(CHANGETYPE_CHANGEACTION)))
+					jEachPayloadBuilder.add(TAG_CHANGETYPE,
+							(String) changeActionAttrDetails.get(CHANGETYPE_CHANGEACTION));
+
+				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(REASONFORCHANGE_CHANGEACTION)))
+					jEachPayloadBuilder.add(TAG_REASONFORCHANGE,
+							(String) changeActionAttrDetails.get(REASONFORCHANGE_CHANGEACTION));
+
+				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(PLATFORM_CHANGEACTION)))
+					jEachPayloadBuilder.add(TAG_PLATFORM,
+							(changeActionAttrDetails.get(PLATFORM_CHANGEACTION)).toString());
 			}
-
-			// STEP : Adding Change Action object details in JSONObjectBuilder
-			if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(TITLE_CHANGEACTION)))
-				jEachPayloadBuilder.add(TAG_TITLE, (String) changeActionAttrDetails.get(TITLE_CHANGEACTION));
-
-			if (UIUtil.isNotNullAndNotEmpty(caId))
-				jEachPayloadBuilder.add(TAG_OID, caId);
-			else
-				jEachPayloadBuilder.add(TAG_OID, " ");
-
-			if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(DomainConstants.SELECT_NAME)))
-				jEachPayloadBuilder.add(TAG_NAME, (String) changeActionAttrDetails.get(DomainConstants.SELECT_NAME));
-			else
-				jEachPayloadBuilder.add(TAG_NAME, " ");
-
-			if (UIUtil
-					.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(DomainConstants.ATTRIBUTE_DESCRIPTION)))
-				jEachPayloadBuilder.add(TAG_DESCRIPTION,
-						(String) changeActionAttrDetails.get(DomainConstants.ATTRIBUTE_DESCRIPTION));
-			else
-				jEachPayloadBuilder.add(TAG_DESCRIPTION, " ");
-
-			if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(CATEGORYOFCHANGE_CHANGEACTION)))
-				jEachPayloadBuilder.add(TAG_CATEGORY_OF_CHANGE,
-						(String) changeActionAttrDetails.get(CATEGORYOFCHANGE_CHANGEACTION));
-
-			if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(CHANGEDOMAIN_CHANGEACTION)))
-				jEachPayloadBuilder.add(TAG_CHANGEDOMAIN,
-						(String) changeActionAttrDetails.get(CHANGEDOMAIN_CHANGEACTION));
-
-			if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(CHANGETYPE_CHANGEACTION)))
-				jEachPayloadBuilder.add(TAG_CHANGETYPE, (String) changeActionAttrDetails.get(CHANGETYPE_CHANGEACTION));
-
-			if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(REASONFORCHANGE_CHANGEACTION)))
-				jEachPayloadBuilder.add(TAG_REASONFORCHANGE,
-						(String) changeActionAttrDetails.get(REASONFORCHANGE_CHANGEACTION));
-
-			if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(PLATFORM_CHANGEACTION)))
-				jEachPayloadBuilder.add(TAG_PLATFORM, (changeActionAttrDetails.get(PLATFORM_CHANGEACTION)).toString());
 
 			logger.writeLog("Change Action Header :: << " + jEachPayloadBuilder.build().toString() + ">>");
 			// Set Change Action Header in JSON
-			setChangeActionHeader(jEachPayloadBuilder);
+//			setChangeActionHeader(jEachPayloadBuilder);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -591,7 +674,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			else
 				jHeaderPartObjectBuilder.add(TAG_PARTINTERCHANGEABILITY, " ");
 
-			jHeaderPartObjectBuilder.add(TAG_VARIAENT_Effectivity, NOT_APPLICABLE);
+			jHeaderPartObjectBuilder.add(TAG_VARIAENT_EFFECTIVITY, NOT_APPLICABLE);
 			jHeaderPartObjectBuilder.add(TAG_DATEFROM, NOT_APPLICABLE);
 			jHeaderPartObjectBuilder.add(TAG_DATETO, NOT_APPLICABLE);
 			jHeaderPartObjectBuilder.add(TAG_REALIZED_DATA, true);
@@ -831,9 +914,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				jMBOMPartBuilder.add(TAG_PARTINTERCHANGEABILITY, " ");
 
 			if (UIUtil.isNotNullAndNotEmpty(strVariantEffectivity))
-				jMBOMPartBuilder.add(TAG_VARIAENT_Effectivity, strVariantEffectivity);
+				jMBOMPartBuilder.add(TAG_VARIAENT_EFFECTIVITY, strVariantEffectivity);
 			else
-				jMBOMPartBuilder.add(TAG_VARIAENT_Effectivity, " ");
+				jMBOMPartBuilder.add(TAG_VARIAENT_EFFECTIVITY, " ");
 			if (UIUtil.isNotNullAndNotEmpty(getCACompletionDate()))
 				jMBOMPartBuilder.add(TAG_DATEFROM, getCACompletionDate());
 			else
@@ -1097,7 +1180,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 		try {
 
 			// STEP : Get Change Action Header
-			JsonObjectBuilder jEachSubContractPayloadBuilder = getChangeActionHeader();
+			JsonObjectBuilder jEachSubContractPayloadBuilder = ChangeActionJSONPayload(context, "");
 			if (null != jEachSubContractPayloadBuilder) {
 				// STEP : Get SubContract part Header
 
@@ -1167,7 +1250,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 							String jsonEachPayloadString = jSubContractPayloadObj.toString();
 							jsonLogger.writeLog("JSON Payload Request for SubContract : <<< " + strTitle + " : >>> \n "
 									+ jsonEachPayloadString + " \n ");
-//							intCADPartResponseString = callPostService(context, jSubContractPayloadObj);
+							intCADPartResponseString = callPostService(context, jSubContractPayloadObj);
 							jsonLogger.writeLog("Response for SubContract : <<< " + strTitle
 									+ " :  Payload from SAP WebService >>> \n " + intCADPartResponseString + " \n ");
 						}
@@ -1262,9 +1345,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				jSubContractBuilder.add(TAG_PARTINTERCHANGEABILITY, " ");
 
 			if (UIUtil.isNotNullAndNotEmpty(strVariantEffectivity))
-				jSubContractBuilder.add(TAG_VARIAENT_Effectivity, strVariantEffectivity);
+				jSubContractBuilder.add(TAG_VARIAENT_EFFECTIVITY, strVariantEffectivity);
 			else
-				jSubContractBuilder.add(TAG_VARIAENT_Effectivity, " ");
+				jSubContractBuilder.add(TAG_VARIAENT_EFFECTIVITY, " ");
 
 			jSubContractBuilder.add(TAG_DATEFROM, getCACompletionDate());
 			jSubContractBuilder.add(TAG_DATETO, "12-31-9999");
@@ -1411,9 +1494,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				jCadPartBuilder.add(TAG_PARTINTERCHANGEABILITY, " ");
 
 			if (UIUtil.isNotNullAndNotEmpty(strVariantEffectivity))
-				jCadPartBuilder.add(TAG_VARIAENT_Effectivity, strVariantEffectivity);
+				jCadPartBuilder.add(TAG_VARIAENT_EFFECTIVITY, strVariantEffectivity);
 			else
-				jCadPartBuilder.add(TAG_VARIAENT_Effectivity, " ");
+				jCadPartBuilder.add(TAG_VARIAENT_EFFECTIVITY, " ");
 
 			jCadPartBuilder.add(TAG_DATEFROM, getCACompletionDate());
 			jCadPartBuilder.add(TAG_DATETO, "12-31-9999");
@@ -1500,7 +1583,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @return web service response
 	 * @throws Exception
 	 */
-	private String callPostService(Context context, JsonObject jEachPayloadObj) throws Exception {
+	private int callPostService(Context context, JsonObject jEachPayloadObj) throws Exception {
 		logger.writeLog("callPostService()..... START");
 		// STEP : Creating HttpPost Object with SAP webService URL
 		HttpPost postURL = new HttpPost(url);
@@ -1539,7 +1622,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			e.printStackTrace();
 		}
 		logger.writeLog("callPostService()..... END");
-		return result;
+		return intResponseCode;
 	}
 
 	/**
@@ -1549,110 +1632,27 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @param String  responseString : Response from SAP webService
 	 * @throws Exception
 	 */
-	private void ProcessWebServiceResponseForSubContract(Context context, String responseString, String strConnectionId)
+	private void processWebServiceResponseForSubContract(Context context, int intResponseCode, String strConnectionId)
 			throws Exception {
 		logger.writeLog("ProcessWebServiceResponseForSubContract START");
 		String sbfErrMes = "";
 
 		SimpleDateFormat DateFormat = new SimpleDateFormat("MM/dd/yyyy hh.mm.ss aa");
-		try (JsonReader jsonReader = Json.createReader(new StringReader(responseString))) {
-			JsonObject jWebServiceResponse = jsonReader.readObject();
-			if (null != jWebServiceResponse) {
-				if (jWebServiceResponse.containsKey(HEADER_PART)) {
-					JsonObject jPayloadObject = jWebServiceResponse.getJsonObject(HEADER_PART);
-					if (null != jPayloadObject) {
-						String resultType = jWebServiceResponse.getString(TAG_TYPE);
-						if (UIUtil.isNotNullAndNotEmpty(resultType) && resultType.equalsIgnoreCase(FAIL)) {
-							setSubContractFailedFlag(true);
-							String strErrorMessage = jPayloadObject.getString(TAG_ERROR_MESSAGE);
-							String strRelID = jPayloadObject.getString(TAG_REL_ID);
-							String strObjTitle = jPayloadObject.getString(TAG_TITLE);
+		try {
+			ContextUtil.pushContext(context);
 
-							if (UIUtil.isNotNullAndNotEmpty(strRelID) && UIUtil.isNotNullAndNotEmpty(strErrorMessage)) {
-//								addRelationshipHistory(context, strRelID, strErrorMessage);
-								sbfErrMes = strObjTitle + ":" + strErrorMessage + "\n";
-							}
+			DomainRelationship domRelBomConnectedToAnchorObj = DomainRelationship.newInstance(context, strConnectionId);
 
-							JsonArray jArrayOfChildParts = jPayloadObject.getJsonArray(HEADER_CHILDREN);
-							if (null != jArrayOfChildParts) {
-								JsonObject jchildPart;
-								String strPartRelID;
-								String sErrorMessage;
-								String strPartTitle;
-								for (int i = 0; i < jArrayOfChildParts.size(); i++) {
-									jchildPart = jArrayOfChildParts.getJsonObject(i);
-									strPartTitle = jchildPart.getString(TAG_TITLE);
-									strPartRelID = jchildPart.getString(TAG_REL_ID);
-									sErrorMessage = jchildPart.getString(TAG_ERROR_MESSAGE);
-
-									if (UIUtil.isNotNullAndNotEmpty(strPartRelID)
-											&& UIUtil.isNotNullAndNotEmpty(sErrorMessage))
-										sbfErrMes.concat(strPartTitle + ":" + sErrorMessage + "\n");
-//										addRelationshipHistory(context, strPartRelID, sErrorMessage);
-								}
-							}
-							DomainRelationship domRel = DomainRelationship.newInstance(context, strConnectionId);
-							domRel.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_FAILED);
-							domRel.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE, sbfErrMes);
-
-						} else if (UIUtil.isNotNullAndNotEmpty(resultType) && resultType.equalsIgnoreCase(SUCCESS)) {
-							String strRelID = jPayloadObject.getString(TAG_REL_ID);
-							if (UIUtil.isNotNullAndNotEmpty(strRelID)) {
-								DomainRelationship domRel = DomainRelationship.newInstance(context, strRelID);
-								// Push context as no Manufacturing Assembly access to 3DXLeader in release
-								// state in respective policy.
-								try {
-									Date date = new Date();
-									ContextUtil.pushContext(context,
-											PropertyUtil.getSchemaProperty(context, "person_UserAgent"),
-											DomainConstants.EMPTY_STRING, DomainConstants.EMPTY_STRING);
-									domRel.setAttributeValue(context, ATTR__SAP_CAD_INSATNCE_UPDATED_ON,
-											DateFormat.format(date));
-
-									DomainRelationship domRelPhysicalProduct = DomainRelationship.newInstance(context,
-											strConnectionId);
-									domRelPhysicalProduct.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG,
-											STATUS_FAILED);
-									domRelPhysicalProduct.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
-											sbfErrMes);
-
-									ContextUtil.popContext(context);
-								} catch (Exception me) {
-									throw me;
-								}
-							}
-							JsonArray jArrayOfChildParts = jPayloadObject.getJsonArray(HEADER_CHILDREN);
-							if (null != jArrayOfChildParts) {
-								// int size = jArrayOfChildParts.size();
-								JsonObject jchildPart;
-								String sRelID;
-								DomainRelationship domRelationship;
-								for (int i = 0; i < jArrayOfChildParts.size(); i++) {
-									jchildPart = jArrayOfChildParts.getJsonObject(i);
-									sRelID = jchildPart.getString(TAG_REL_ID);
-									if (UIUtil.isNotNullAndNotEmpty(sRelID)) {
-										domRelationship = DomainRelationship.newInstance(context, sRelID);
-										try {
-											Date date = new Date();
-											ContextUtil.pushContext(context,
-													PropertyUtil.getSchemaProperty(context, "person_UserAgent"),
-													DomainConstants.EMPTY_STRING, DomainConstants.EMPTY_STRING);
-											domRelationship.setAttributeValue(context,
-													ATTR__SAP_CAD_INSATNCE_UPDATED_ON, DateFormat.format(date));
-											ContextUtil.popContext(context);
-										} catch (Exception me) {
-											throw me;
-										}
-									}
-								}
-							}
-						}
-					} else
-						logger.writeLog("ERROR : Invalid Response from SAP WebService");
-				} else
-					logger.writeLog("Failed to get Header of SubContract from response JSON object ");
-			} else
-				logger.writeLog("ERROR : Invalid Response from SAP WebService");
+			if (intResponseCode == 200) {
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_IN_WORK);
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
+						MSG_JSON_FORMAT_VALIDATION_COMPLETED);
+			} else {
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_FAILED);
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
+						MSG_JSON_FORMAT_VALIDATION_FAILED);
+			}
+			ContextUtil.popContext(context);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -1667,127 +1667,28 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @return
 	 * @throws Exception
 	 */
-	private HashMap<String, String> ProcessWebServiceResponseForManufacturingAssembly(Context context,
-			String responseString, String strConnectionId) throws Exception {
+	private void processWebServiceResponseForManufacturingAssembly(Context context, int intResponseCode,
+			String strConnectionId) throws NullPointerException {
 		logger.writeLog("ProcessWebServiceResponseForManufacturingAssembly START");
+		try {
+			ContextUtil.pushContext(context);
 
-		StringBuffer sbfErrMes = new StringBuffer();
-		SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy hh.mm.ss aa");
-		HashMap<String, String> responseMap = new HashMap<>();
-		try (JsonReader jsonReader = Json.createReader(new StringReader(responseString))) {
-			System.out.println("In try with resource for ProcessWebServiceResponseForManufacturingAssembly-----");
-			JsonObject jWebServiceResponse = jsonReader.readObject();
-			if (null != jWebServiceResponse) {
-				if (jWebServiceResponse.containsKey(HEADER_PART)) {
-					JsonObject jPayloadObject = jWebServiceResponse.getJsonObject(HEADER_PART);
-					if (null != jPayloadObject) {
-						String resultType = jWebServiceResponse.getString(TAG_TYPE);
+			DomainRelationship domRelBomConnectedToAnchorObj = DomainRelationship.newInstance(context, strConnectionId);
 
-						if (UIUtil.isNotNullAndNotEmpty(resultType) && resultType.equalsIgnoreCase(FAIL)) {
-							String strErrorMessage = jPayloadObject.getString(TAG_ERROR_MESSAGE);
-							String strObjID = jPayloadObject.getString(TAG_OID);
-							String strObjTitle = jPayloadObject.getString(TAG_TITLE);
-
-							if (UIUtil.isNotNullAndNotEmpty(strObjID) && UIUtil.isNotNullAndNotEmpty(strErrorMessage)) {
-								sbfErrMes.append(strObjTitle + " : " + strErrorMessage + "\n");
-//								addObjectHistory(context, strObjID, strErrorMessage);
-							}
-
-							JsonArray jArrayOfChildParts = jPayloadObject.getJsonArray(HEADER_CHILDREN);
-							if (null != jArrayOfChildParts) {
-								JsonObject jchildPart;
-								String strPartTitle;
-								String strPartRelID;
-								String sErrorMessage;
-								for (int i = 0; i < jArrayOfChildParts.size(); i++) {
-									jchildPart = jArrayOfChildParts.getJsonObject(i);
-									strPartTitle = jchildPart.getString(TAG_TITLE);
-									strPartRelID = jchildPart.getString(TAG_REL_ID);
-									sErrorMessage = jchildPart.getString(TAG_ERROR_MESSAGE);
-
-									if (UIUtil.isNotNullAndNotEmpty(sErrorMessage)) {
-//										addRelationshipHistory(context, strPartRelID, sErrorMessage); // adding history on MBOM Instance
-
-										sbfErrMes.append(strPartTitle + ":" + sErrorMessage + "\n");
-//										addObjectHistory(context, strObjID, strErrorMessage); // Adding history on M11 Object
-									}
-								}
-							}
-							responseMap.put("status", resultType);
-							responseMap.put("ErrorMessage", sbfErrMes.toString());
-							DomainRelationship domRelMA = DomainRelationship.newInstance(context, strConnectionId);
-							domRelMA.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_FAILED);
-							domRelMA.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE, sbfErrMes.toString());
-
-						} else if (UIUtil.isNotNullAndNotEmpty(resultType) && resultType.equalsIgnoreCase(SUCCESS)) {
-							String strObjID = jPayloadObject.getString(TAG_OID);
-							if (UIUtil.isNotNullAndNotEmpty(strObjID)) {
-								DomainObject HeaderObject = new DomainObject(strObjID);
-								String strSAPUniqueID = jPayloadObject.getString(TAG_SAPUNIQUE_ID);
-								// Push context as no Manufacturing Assembly access to 3DXLeader in release
-								// state in respective policy.
-								try {
-									if (getSubContractFailedFlag() == false) {
-										Date date = new Date();
-										ContextUtil.pushContext(context,
-												PropertyUtil.getSchemaProperty(context, "person_UserAgent"),
-												DomainConstants.EMPTY_STRING, DomainConstants.EMPTY_STRING);
-										HeaderObject.setAttributeValue(context, ATTR__SAP_UNIQUEID, strSAPUniqueID);
-										HeaderObject.setAttributeValue(context, ATTR__SAPMBOM_UPDATED_ON,
-												dateFormat.format(date));
-										DomainRelationship domRel = DomainRelationship.newInstance(context,
-												strConnectionId);
-										domRel.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG,
-												VALUE_STATUS_COMPLETE);
-										domRel.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
-												sbfErrMes.toString());
-										ContextUtil.popContext(context);
-										responseMap.put("status", resultType);
-										responseMap.put("ErrorMessage", sbfErrMes.toString());
-										System.out.println(
-												"ProcessWebServiceResponseForManufacturingAssembly ---- sbfErrMes "
-														+ sbfErrMes.toString());
-									}
-								} catch (Exception e) {
-									throw e;
-								}
-//								JsonArray jArrayOfChildParts = jPayloadObject.getJsonArray(HEADER_CHILDREN);
-//								if (null != jArrayOfChildParts) {
-//									JsonObject jchildPart;
-//									String sRelID;
-//									DomainRelationship domRel;
-//									for (int i = 0; i < jArrayOfChildParts.size(); i++) {
-//										jchildPart = jArrayOfChildParts.getJsonObject(i);
-//										sRelID = jchildPart.getString(TAG_REL_ID);
-//										if (UIUtil.isNotNullAndNotEmpty(sRelID)) {
-//											domRel = DomainRelationship.newInstance(context, sRelID);
-//											try {
-//												Date date = new Date();
-//												ContextUtil.pushContext(context,
-//														PropertyUtil.getSchemaProperty(context, "person_UserAgent"),
-//														DomainConstants.EMPTY_STRING, DomainConstants.EMPTY_STRING);
-//												domRel.setAttributeValue(context, ATTR__SAP_INSATNCE_UPDATED_ON,
-//														dateFormat.format(date));
-//												ContextUtil.popContext(context);
-//											} catch (Exception me) {
-//												throw me;
-//											}
-//										}
-//									}
-//								}
-							}
-						} else // Error of Invalid Response format
-							logger.writeLog("ERROR : Invalid Response from SAP WebService");
-					} else
-						logger.writeLog("Failed to get Header of Manufacturing Assembly from response JSON object ");
-				} else
-					logger.writeLog("Failed to get response JSON object");
+			if (intResponseCode == 200) {
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_IN_WORK);
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
+						MSG_JSON_FORMAT_VALIDATION_COMPLETED);
+			} else {
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_FAILED);
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
+						MSG_JSON_FORMAT_VALIDATION_FAILED);
 			}
+			ContextUtil.popContext(context);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		logger.writeLog("ProcessWebServiceResponseForManufacturingAssembly END");
-		return responseMap;
 	}
 
 	/**
@@ -1989,29 +1890,6 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	}
 
 	/**
-	 * This Method is to Set the Cookie for the Session
-	 *
-	 * @param context
-	 * @param strCookie : Cookie for the Session
-	 * @throws Exception
-	 */
-	private static int setChangeActionHeader(JsonObjectBuilder jEachPayloadBuilder) {
-		changeActionJsonBuilder = jEachPayloadBuilder;
-		return 0;
-	}
-
-	/**
-	 * This Method is to Get the Cookie for the Session
-	 *
-	 * @param context
-	 * @return COOKIE : Cookie for the Session
-	 * @throws Exception
-	 */
-	private static JsonObjectBuilder getChangeActionHeader() {
-		return changeActionJsonBuilder;
-	}
-
-	/**
 	 * Invoking SAP Web service with GET Method to get the x-csrf-token and cookies
 	 * error or send empty string.
 	 *
@@ -2088,7 +1966,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 *
 	 * @throws Exception
 	 */
-	private void LoggerInitialization(Context context) throws Exception {
+	private void loggerInitialization(Context context) throws Exception {
 		try {
 			String strCompleteLogger = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
 					"LCD_3DXSAPStringResource_en.logger.CompleteLogger", language);
