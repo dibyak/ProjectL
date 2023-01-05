@@ -5,7 +5,9 @@
 	"waiting": "Waiting",
 	"caCompletedTime":"caCompletedTime",
 	"sno":"sno",
-	"headers1": [{
+	"rePushWebserviceResponceMessage_success": "JSON Format Validation Completed",
+	"rePushWebserviceResponceMessage_failed": "JSON Format Validation Failed",
+	"headersForAllInOneTab": [{
 			"text": "Sr. No.",
 			"value": "sno",
 			"width": "92px"
@@ -13,7 +15,7 @@
 		{
 			"text": "Name",
 			"align": "start",
-			"value": "maName"
+			"value": "BOMComponentName"
 		},
 		{
 			"text": "Status",
@@ -52,7 +54,7 @@
 			"value": "SapFeedbackMessage"
 		}
 	],
-	"headers": [{
+	"headersForSeperateTab": [{
 			"text": "Sr. No.",
 			"value": "sno",
 			"width": "92px"
@@ -60,7 +62,7 @@
 		{
 			"text": "Name",
 			"align": "start",
-			"value": "maName"
+			"value": "BOMComponentName"
 		},
 		{
 			"text": "Revision",

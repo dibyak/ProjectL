@@ -1,5 +1,5 @@
 {
-	"webserviceURLToGetAllBOMComponents": "https://sjc01en3apapd01.corp.lucid.lcl:447/3DSpace/LCDSAPIntegrationModeler/LCDSAPIntegrationService/getMA",
-	"webserviceURLForRepush": "https://sjc01en3apapd01.corp.lucid.lcl:447/3DSpace/LCDSAPIntegrationModeler/LCDPushToSAPServices/PushToSAP",
-	"webserviceURLToExportPartData": "https://sjc01en3apapd01.corp.lucid.lcl:447/3DSpace"
+	"webserviceURLToGetAllBOMComponents": "/LCDSAPIntegrationModeler/LCDSAPIntegrationService/getMA",
+	"webserviceURLForRepush": "/LCDSAPIntegrationModeler/LCDPushToSAPServices/PushToSAP",
+	"webserviceURLToExportPartData": "/LCDSAPIntegrationModeler/LCDSAPIntegrationExportCSVService/exportCSV"
 }
