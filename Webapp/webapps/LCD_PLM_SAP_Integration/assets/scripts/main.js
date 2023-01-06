@@ -1,29 +1,30 @@
 define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
   "UWA/Drivers/jQuery",
   "vue",
-  'DS/PlatformAPI/PlatformAPI',
-  'DS/WAFData/WAFData',
+  "DS/PlatformAPI/PlatformAPI",
+  "DS/WAFData/WAFData",
   "LCD/LCD_PLM_SAP_Integration/lib/scripts/vuetify.min",
   "i18n!LCD/LCD_PLM_SAP_Integration/nls/PLM_SAP_Integration_nls",
   "css!LCD/LCD_PLM_SAP_Integration/lib/styles/vuetify.min.css",
   "css!LCD/LCDLIB/styles/google.css",
   "css!LCD/LCDLIB/styles/materialdesignicons.min.css",
-  "css!LCD/LCD_PLM_SAP_Integration/assets/styles/style.css"
-], function ($,Vue,PlatformAPI,WAFData, Vuetify, PLM_SAP_Integration_nls) {
+  "css!LCD/LCD_PLM_SAP_Integration/assets/styles/style.css",
+], function ($, Vue, PlatformAPI, WAFData, Vuetify, PLM_SAP_Integration_nls) {
   Vue.use(Vuetify, {});
   var myWidget = {
+    jsonResponse: "",
     onLoad: function () {
       // console.log("On Load call!!");
-      var apps = PlatformAPI.getAllApplicationConfigurations();							
-				for (var i = 0; i < apps.length; i++) {
-					if (apps[i]["propertyKey"] === "app.urls.myapps") {
-						var u = new URL(apps[i]["propertyValue"]);
-						_3dspaceUrl = u.href;
-						break;
-					}
-				}
+      var apps = PlatformAPI.getAllApplicationConfigurations();
+      	for (var i = 0; i < apps.length; i++) {
+      		if (apps[i]["propertyKey"] === "app.urls.myapps") {
+      			var u = new URL(apps[i]["propertyValue"]);
+      			_3dspaceUrl = u.href;
+      			break;
+      		}
+      	}
         console.log(_3dspaceUrl);
-       myWidget.webserviceToGetAllBOMComponents();
+      myWidget.webserviceToGetAllBOMComponents();
       myWidget.setVueTemplate();
       myWidget.loadData();
     },
@@ -1633,136 +1634,160 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
 						</div>`;
       $body.html(vueTags);
     },
-    webserviceToGetAllBOMComponents: function(){
+    webserviceToGetAllBOMComponents: function () {
       var _this = this;
-      WAFData.authenticatedRequest(_3dspaceUrl + widget.getValue('webserviceURLToGetAllBOMComponents'), {
-        method: "GET",
-        accept: "application/json",
-        onComplete: function(dataResp) {
-          var data = JSON.parse(dataResp);
-          _this.vueapp.BOMComponentsReceivedFromWS = data;
-          _this.vueapp.arrFilterData = data;
-        },
-        onFailure: function(error) {
-          console.log(error);
+      WAFData.authenticatedRequest(_3dspaceUrl + '/LCDSAPIntegrationModeler/LCDSAPIntegrationService/getMA',
+      // WAFData.authenticatedRequest(widget.getValue("webserviceURLToGetAllBOMComponents"),
+        {
+          method: "GET",
+          accept: "application/json",
+          onComplete: function (dataResp) {
+            var data = JSON.parse(dataResp);
+            _this.vueapp.BOMComponentsReceivedFromWS = data;
+            _this.vueapp.arrFilterData = data;
+          },
+          onFailure: function (error) {
+            console.log(error);
+          },
         }
-      });
+      );
     },
-    webserviceForRepush: function(){
+    webserviceForRepush: async function () {
+      debugger;
       var _this = this;
       // _this.vueapp.snackbarColor = "success";
       // _this.vueapp.snackbar = true;
       // _this.vueapp.snackbarMsg.push("SUCCESS!!");
       // _this.vueapp.snackbarMsg.push("SUCCESS!! DARSHIT");
-      for(let i=0; i<_this.vueapp.selected.length; i++) {
-            var Ca_ID = _this.vueapp.selected[i].caID;
-            var BOM_Comp_ID = _this.vueapp.selected[i].BOMComponentID;
-            var ma_name = _this.vueapp.selected[i].BOMComponentName;
-            var Connection_ID = _this.vueapp.selected[i].ConnectionID;
-            var data_to_be_Send_from_UI = {
-                            CAID :Ca_ID,
-                            BOMComponentID:BOM_Comp_ID,
-                            ConnectionID:Connection_ID,
-                            BOMName: ma_name
-                          };
+      for (let i = 0; i < _this.vueapp.selected.length; i++) {
+        var Ca_ID = _this.vueapp.selected[i].caID;
+        var BOM_Comp_ID = _this.vueapp.selected[i].BOMComponentID;
+        var ma_name = _this.vueapp.selected[i].BOMComponentName;
+        var Connection_ID = _this.vueapp.selected[i].ConnectionID;
+        var data_to_be_Send_from_UI = {
+          CAID: Ca_ID,
+          BOMComponentID: BOM_Comp_ID,
+          ConnectionID: Connection_ID,
+          BOMName: ma_name,
+        };
+       await myWidget
+          .repush2(data_to_be_Send_from_UI)
+          .then(function () {
+            //_this.vueapp.snackbarMsg = [myWidget.jsonResponse];
+           _this.vueapp.snackbarMsg.push(myWidget.jsonResponse);
 
-      WAFData.authenticatedRequest(_3dspaceUrl + widget.getValue('webserviceURLForRepush'), {
-        method: "POST",
-        accept: "application/json",
-        crossOrigin: true,
-        timeout: 7000,
-        data : JSON.stringify(data_to_be_Send_from_UI),
-        headers: {
-          'Content-Type': 'application/json'
-          },
-          
-        onComplete: function(myJson) {
-          // alert("ONLOAD CALLED!!!");
-          let returnData = JSON.parse(myJson);
-          // _this.vueapp.responseData = returnData;
-          _this.vueapp.snackbarMsg.push(returnData);
-          // _this.vueapp.snackbarMsg.push(_this.vueapp.selected[i].BOMComponentName);
-          console.log("MYJSON -->" + myJson);
-          
-          if(_this.vueapp.snackbarMsg[i].status == "Success") {
-            _this.vueapp.snackbarColor = "success";
-            _this.vueapp.snackbar = true;
-            _this.vueapp.SearchMethod.map( x => {
-              _this.vueapp.selected.map( y =>{
-                if(x.BOMComponentID == y.BOMComponentID) {
-                  x.SapFeedbackMessage = PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_success;
-                }
-              }
-              )
-            })
-          }
-          else if((_this.vueapp.snackbarMsg[i].status == "Failed")){
-            _this.vueapp.snackbarColor = "error";
-            // _this.vueapp.snackbarMsg.push(returnData);
-            _this.vueapp.snackbar = true;
-            _this.vueapp.SearchMethod.map( x => {
-              _this.vueapp.selected.map( y =>{
-                if(x.BOMComponentID == y.BOMComponentID) {
-                  x.status = PLM_SAP_Integration_nls.failed;
-                  x.SapFeedbackMessage = PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_failed;
-                }
-              }
-              )
-            })
-          }
-        },
-        onFailure: function(error) {
-          console.log(error);
-          alert("ERROR OCCURED!!!");
-          _this.vueapp.snackbarColor = "error";
-          _this.vueapp.snackbarMsg.push("ERROR OCCURED!!!");
-          console.log( _this.vueapp.snackbarMsg);
-          _this.vueapp.snackbar = true;
-
-          _this.vueapp.SearchMethod.map( x => {
-            _this.vueapp.selected.map( y =>{
-              if(x.BOMComponentID == y.BOMComponentID) {
-                x.status = PLM_SAP_Integration_nls.failed;
-                x.SapFeedbackMessage = PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_failed;
-              }
+            // _this.vueapp.snackbarMsg.push(_this.vueapp.selected[i].BOMComponentName);
+            console.log("MYJSON -->" + myWidget.jsonResponse);
+            if (_this.vueapp.snackbarMsg[i].status == "Success") {
+              _this.vueapp.snackbarColor = "success";
+              _this.vueapp.snackbar = true;
+              _this.vueapp.SearchMethod.map((x) => {
+                _this.vueapp.selected.map((y) => {
+                  if (x.BOMComponentID == y.BOMComponentID) {
+                    x.SapFeedbackMessage =
+                      PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_success;
+                  }
+                });
+              });
+            } else if (_this.vueapp.snackbarMsg[i].status == "Failed") {
+              _this.vueapp.snackbarColor = "error";
+              // _this.vueapp.snackbarMsg.push(returnData);
+              _this.vueapp.snackbar = true;
+              _this.vueapp.SearchMethod.map((x) => {
+                _this.vueapp.selected.map((y) => {
+                  if (x.BOMComponentID == y.BOMComponentID) {
+                    x.status = PLM_SAP_Integration_nls.failed;
+                    x.SapFeedbackMessage =
+                      PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_failed;
+                  }
+                });
+              });
             }
-            )
           })
+          .catch(function () {
+            alert("ERROR OCCURED!!!");
+            _this.vueapp.snackbarColor = "error";
+            _this.vueapp.snackbarMsg.push("ERROR OCCURED!!!");
+            console.log(_this.vueapp.snackbarMsg);
+            _this.vueapp.snackbar = true;
+
+            _this.vueapp.SearchMethod.map((x) => {
+              _this.vueapp.selected.map((y) => {
+                if (x.BOMComponentID == y.BOMComponentID) {
+                  x.status = PLM_SAP_Integration_nls.failed;
+                  x.SapFeedbackMessage =
+                    PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_failed;
+                }
+              });
+            });
+          });
+      }
+      _this.vueapp.selected = [];
+    },
+    repush2: function (data_to_be_Send_from_UI) {
+      return new Promise(function (resolve, reject) {
+        try {
+          WAFData.authenticatedRequest(
+            widget.getValue("webserviceURLForRepush"),
+            {
+              method: "POST",
+              accept: "application/json",
+              crossOrigin: true,
+              timeout: 7000,
+              data: JSON.stringify(data_to_be_Send_from_UI),
+              headers: {
+                "Content-Type": "application/json",
+              },
+
+              onComplete: function (myJson) {
+                // alert("ONLOAD CALLED!!!");
+                myWidget.jsonResponse = JSON.parse(myJson);
+                resolve();
+              },
+              onFailure: function (error) {
+                console.log( "--------> ERROR ON WEBSERVICE FAILURE :" +error);
+                reject();
+              },
+            }
+          );
+        } catch (err) {
+          console.log("------>>> ERROR CATCH :" +err);
         }
       });
-    }
-    // _this.vueapp.selected = [];
-    // _this.vueapp.failedSelectedCount = null;
     },
-    webserviceToExportPartData: function(){
+    webserviceToExportPartData: function () {
       var _this = this;
-              var Ca_ID  = _this.vueapp.selected[0].caID;
-              var BOM_Comp_Type  ="";
-              var BOM_Comp_ID  = _this.vueapp.selected[0].BOMComponentID;
-              var dataTobeSendfromUI = {
-                              CAID :Ca_ID,
-                              BOMComponentID:BOM_Comp_ID,
-                              BOMComponentType :BOM_Comp_Type,
-                            };
-      WAFData.authenticatedRequest(_3dspaceUrl + widget.getValue('webserviceURLToExportPartData'), {
-        method: "POST",
-        accept: "application/json",
-        crossOrigin: true,
-        timeout: 7000,
-        data : JSON.stringify(dataTobeSendfromUI),
-        headers: {
-                'Content-Type': 'application/json'
-                },
-        onComplete: function(dataResp) {
-          var data = JSON.parse(dataResp);
-          _this.vueapp.partData = data;
-        console.table("RESPONCE ------>"+dataResp);
-        },
-        onFailure: function(error) {
-          console.log(error);
+      var Ca_ID = _this.vueapp.selected[0].caID;
+      var BOM_Comp_Type = "";
+      var BOM_Comp_ID = _this.vueapp.selected[0].BOMComponentID;
+      var dataTobeSendfromUI = {
+        CAID: Ca_ID,
+        BOMComponentID: BOM_Comp_ID,
+        BOMComponentType: BOM_Comp_Type,
+      };
+      WAFData.authenticatedRequest(
+        widget.getValue("webserviceURLToExportPartData"),
+        {
+          method: "POST",
+          accept: "application/json",
+          crossOrigin: true,
+          timeout: 7000,
+          data: JSON.stringify(dataTobeSendfromUI),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          onComplete: function (dataResp) {
+            var data = JSON.parse(dataResp);
+            _this.vueapp.partData = data;
+            console.table("RESPONCE ------>" + dataResp);
+          },
+          onFailure: function (error) {
+            console.log(error);
+          },
         }
-      });
+      );
     },
+
     loadData: function () {
       var vueapp = new Vue({
         el: "#app",
@@ -1773,7 +1798,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           arrObj: [],
           failedStatus: false,
           snackbar: false,
-          snackbarMsg : [],
+          snackbarMsg: [],
           type: 1,
           // active: true,
           BOMComponentName: "",
@@ -1791,7 +1816,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           singleSelect: false,
           search: "",
           globalSearch: "",
-          BOMComponentsReceivedFromWS:[],
+          BOMComponentsReceivedFromWS: [],
           selected: [],
           headersForAllInOneTab: PLM_SAP_Integration_nls.headersForAllInOneTab,
           headersForSeperateTab: PLM_SAP_Integration_nls.headersForSeperateTab,
@@ -1806,25 +1831,40 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           // },
           // checkbox method to enable only failed ones
           // onlyFailed() {
-            // return this.SearchMethod.map(x => ({
-            //   ...x,
-            //   isSelectable: x.status == PLM_SAP_Integration_nls.failed
-            // }))
+          // return this.SearchMethod.map(x => ({
+          //   ...x,
+          //   isSelectable: x.status == PLM_SAP_Integration_nls.failed
+          // }))
           // },
           methodToAddSrNoInAllTab() {
-            return this.SearchMethod.map((d, index) => ({ ...d, sno: index + 1}));
+            return this.SearchMethod.map((d, index) => ({
+              ...d,
+              sno: index + 1,
+            }));
           },
           methodToAddSrNoInWaitingTable() {
-            return this.methodToGetWaitingTable.map((d, index) => ({ ...d, sno: index + 1 }));
+            return this.methodToGetWaitingTable.map((d, index) => ({
+              ...d,
+              sno: index + 1,
+            }));
           },
           methodToAddSrNoInInWorkTable() {
-            return this.methodToGetInWorkTable.map((d, index) => ({ ...d, sno: index + 1 }));
+            return this.methodToGetInWorkTable.map((d, index) => ({
+              ...d,
+              sno: index + 1,
+            }));
           },
           methodToAddSrNoInCompleteTable() {
-            return this.methodToGetSuccessTable.map((d, index) => ({ ...d, sno: index + 1 }));
+            return this.methodToGetSuccessTable.map((d, index) => ({
+              ...d,
+              sno: index + 1,
+            }));
           },
           methodToAddSrNoInFailedTable() {
-            return this.methodToGetFailedTable.map((d, index) => ({ ...d, sno: index + 1 }));
+            return this.methodToGetFailedTable.map((d, index) => ({
+              ...d,
+              sno: index + 1,
+            }));
           },
           SearchMethod() {
             let conditions = [];
@@ -1859,8 +1899,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               conditions.push(this.filterSapFeedbackMessage);
             }
             if (conditions.length > 0) {
-              return this.arrFilterData.filter(name => {
-                return conditions.every(condition => {
+              return this.arrFilterData.filter((name) => {
+                return conditions.every((condition) => {
                   return condition(name);
                 });
               });
@@ -1868,96 +1908,117 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             return this.arrFilterData;
           },
           methodToGetSuccessTable() {
-            return this.SearchMethod.filter(x => x.status == PLM_SAP_Integration_nls.success);
+            return this.SearchMethod.filter(
+              (x) => x.status == PLM_SAP_Integration_nls.success
+            );
           },
           methodToGetFailedTable() {
-            return this.SearchMethod.filter(x => x.status == PLM_SAP_Integration_nls.failed);
+            return this.SearchMethod.filter(
+              (x) => x.status == PLM_SAP_Integration_nls.failed
+            );
           },
           methodToGetWaitingTable() {
-            return this.SearchMethod.filter(x => x.status == PLM_SAP_Integration_nls.waiting);
+            return this.SearchMethod.filter(
+              (x) => x.status == PLM_SAP_Integration_nls.waiting
+            );
           },
           methodToGetInWorkTable() {
-            return this.SearchMethod.filter(x => x.status == PLM_SAP_Integration_nls.inWork);
-          }
+            return this.SearchMethod.filter(
+              (x) => x.status == PLM_SAP_Integration_nls.inWork
+            );
+          },
         },
         methods: {
           methodToDisableRepushBtnOnSelectAll(obj1) {
-            if(!obj1.value){
-              this.arrObj = []
+            if (!obj1.value) {
+              this.arrObj = [];
             }
-            if(obj1.items.length == obj1.items.filter(x => x.status == PLM_SAP_Integration_nls.failed).length){
-                this.failedStatus = true
+            if (
+              obj1.items.length ==
+              obj1.items.filter(
+                (x) => x.status == PLM_SAP_Integration_nls.failed
+              ).length
+            ) {
+              this.failedStatus = true;
             } else {
-                this.failedStatus = false
+              this.failedStatus = false;
             }
-        },
-          methodToDisableRepushBtnOnSelect(obj){
-            if(this.selected.length == this.SearchMethod.length){
-              this.arrObj = this.selected
+          },
+          methodToDisableRepushBtnOnSelect(obj) {
+            if (this.selected.length == this.SearchMethod.length) {
+              this.arrObj = this.selected;
             }
-             if(obj.value){
+            if (obj.value) {
               this.arrObj.push(obj.item);
-            }
-            else{
+            } else {
               var index = this.arrObj.indexOf(obj.item);
               this.arrObj.splice(index, 1);
               // arrobj = arrobj.filter(item => item !== obj);
             }
-            if(this.arrObj.filter(x => x.status !== PLM_SAP_Integration_nls.failed).length > 0){
-              this.failedStatus = false
-            } else if(this.arrObj.filter(x => x.status == PLM_SAP_Integration_nls.failed).length > 0){
-              this.failedStatus = true
+            if (
+              this.arrObj.filter(
+                (x) => x.status !== PLM_SAP_Integration_nls.failed
+              ).length > 0
+            ) {
+              this.failedStatus = false;
+            } else if (
+              this.arrObj.filter(
+                (x) => x.status == PLM_SAP_Integration_nls.failed
+              ).length > 0
+            ) {
+              this.failedStatus = true;
             } else {
-              this.failedStatus = false
+              this.failedStatus = false;
             }
           },
-          methodtodoCustomSortinTable: function(items, index, isDesc) {
+          methodtodoCustomSortinTable: function (items, index, isDesc) {
             items.sort((a, b) => {
-                if (index[0]==PLM_SAP_Integration_nls.caCompletedTime) {
-                  if (!isDesc[0]) {
-                      return new Date(b[index]) - new Date(a[index]);
-                  } else {
-                      return new Date(a[index]) - new Date(b[index]);
-                  }
-                }
-                else if (index[0]==PLM_SAP_Integration_nls.sno){
-                  if (!isDesc[0]) {
-                    return b[index] - a[index];
+              if (index[0] == PLM_SAP_Integration_nls.caCompletedTime) {
+                if (!isDesc[0]) {
+                  return new Date(b[index]) - new Date(a[index]);
                 } else {
-                    return a[index] - b[index];
+                  return new Date(a[index]) - new Date(b[index]);
                 }
+              } else if (index[0] == PLM_SAP_Integration_nls.sno) {
+                if (!isDesc[0]) {
+                  return b[index] - a[index];
+                } else {
+                  return a[index] - b[index];
                 }
-                else {
-                  if(typeof a[index] != 'undefined'){
-                    if (!isDesc[0]) {
-                       return a[index].toLowerCase().localeCompare(b[index].toLowerCase());
-                    }
-                    else {
-                        return b[index].toLowerCase().localeCompare(a[index].toLowerCase());
-                    }
+              } else {
+                if (typeof a[index] != "undefined") {
+                  if (!isDesc[0]) {
+                    return a[index]
+                      .toLowerCase()
+                      .localeCompare(b[index].toLowerCase());
+                  } else {
+                    return b[index]
+                      .toLowerCase()
+                      .localeCompare(a[index].toLowerCase());
                   }
                 }
+              }
             });
             return items;
           },
           download_csv_of_tabledata(csv, filename) {
             var csvFile;
             var downloadLink;
-        
+
             // CSV FILE
-            csvFile = new Blob([csv], {type: "text/csv"});
-        
+            csvFile = new Blob([csv], { type: "text/csv" });
+
             // Download link
             downloadLink = document.createElement("a");
-        
+
             downloadLink.download = filename;
-        
+
             downloadLink.href = window.URL.createObjectURL(csvFile);
-        
+
             downloadLink.style.display = "none";
-        
+
             document.body.appendChild(downloadLink);
-        
+
             downloadLink.click();
           },
           export_table_to_csv_method(html, filename) {
@@ -1965,43 +2026,58 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             var csv = [];
             // var csv = this.selected;
             var rows = document.querySelectorAll("table tr");
-        
+
             for (var i = 0; i < rows.length; i++) {
-            var row = [], cols = rows[i].querySelectorAll("td, th");
-          
-              for (var j = 1; j < cols.length; j++)
-                  row.push(cols[j].innerText);
-              
-          csv.push(row.join(","));
-        }
-      // Download CSV
-          // _this.download_csv_of_tabledata(csv.join("\n"), filename);
-          _this.download_csv_of_tabledata(csv.join("\n"), "3DX-SAP Integration");
-      },
-          export_part_data(){
+              var row = [],
+                cols = rows[i].querySelectorAll("td, th");
+
+              for (var j = 1; j < cols.length; j++) row.push(cols[j].innerText);
+
+              csv.push(row.join(","));
+            }
+            // Download CSV
+            // _this.download_csv_of_tabledata(csv.join("\n"), filename);
+            _this.download_csv_of_tabledata(
+              csv.join("\n"),
+              "3DX-SAP Integration"
+            );
+          },
+          export_part_data() {
             myWidget.webserviceToExportPartData();
             // _this.download_csv_of_tabledata(this.partData.join("\n"), "Sub contract part");
           },
           getStatusColor(status) {
-            if (status === PLM_SAP_Integration_nls.success) return "green lighten-1";
-            else if (status === PLM_SAP_Integration_nls.failed) return "red lighten-1";
-            else if (status === PLM_SAP_Integration_nls.inWork) return "blue lighten-1";
-            else if (status === PLM_SAP_Integration_nls.waiting) return "yellow lighten-1";
+            if (status === PLM_SAP_Integration_nls.success)
+              return "green lighten-1";
+            else if (status === PLM_SAP_Integration_nls.failed)
+              return "red lighten-1";
+            else if (status === PLM_SAP_Integration_nls.inWork)
+              return "blue lighten-1";
+            else if (status === PLM_SAP_Integration_nls.waiting)
+              return "yellow lighten-1";
           },
           filtermaName(item) {
-            return item.BOMComponentName.toLowerCase().includes(this.BOMComponentName.toLowerCase());
+            return item.BOMComponentName.toLowerCase().includes(
+              this.BOMComponentName.toLowerCase()
+            );
           },
           filterStatus(item) {
-            return item.status.toLowerCase().includes(this.status.toLowerCase());
+            return item.status
+              .toLowerCase()
+              .includes(this.status.toLowerCase());
           },
           filterRevision(item) {
-            return item.revision.toLowerCase().includes(this.revision.toLowerCase());
+            return item.revision
+              .toLowerCase()
+              .includes(this.revision.toLowerCase());
           },
           filterTitle(item) {
             return item.title.toLowerCase().includes(this.title.toLowerCase());
           },
           filterMaturity(item) {
-            return item.maturity.toLowerCase().includes(this.maturity.toLowerCase());
+            return item.maturity
+              .toLowerCase()
+              .includes(this.maturity.toLowerCase());
           },
           filterDescription(item) {
             return item.description
@@ -2014,7 +2090,9 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               .includes(this.caCompletedTime.toLowerCase());
           },
           filterCaName(item) {
-            return item.caName.toLowerCase().includes(this.caName.toLowerCase());
+            return item.caName
+              .toLowerCase()
+              .includes(this.caName.toLowerCase());
           },
           filterSapFeedbackTimeStamp(item) {
             return item.SapFeedbackTimeStamp.toLowerCase().includes(
@@ -2027,15 +2105,13 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             );
           },
           rePushToSAPMethod() {
-            this.SearchMethod.map( x => {
-              this.selected.map( y =>{
-                if(x.BOMComponentID == y.BOMComponentID) {
+            this.SearchMethod.map((x) => {
+              this.selected.map((y) => {
+                if (x.BOMComponentID == y.BOMComponentID) {
                   x.status = PLM_SAP_Integration_nls.inWork;
                 }
-              }
-              )
-            }
-            )
+              });
+            });
             myWidget.webserviceForRepush();
           },
           clear() {
@@ -2045,42 +2121,43 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             if (this.globalSearch === "" || this.globalSearch === null) {
               this.arrFilterData = this.BOMComponentsReceivedFromWS;
             } else {
-              return this.arrFilterData = this.BOMComponentsReceivedFromWS.filter(data => {
-                return (
-                  data.BOMComponentName
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.status
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.revision
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.title
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.maturity
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.description
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.caCompletedTime
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.caName
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.SapFeedbackTimeStamp.toLowerCase().includes(
-                    this.globalSearch.toLowerCase()
-                  ) ||
-                  data.SapFeedbackMessage.toLowerCase().includes(
-                    this.globalSearch.toLowerCase()
-                  )
-                );
-              });
+              return (this.arrFilterData =
+                this.BOMComponentsReceivedFromWS.filter((data) => {
+                  return (
+                    data.BOMComponentName.toLowerCase().includes(
+                      this.globalSearch.toLowerCase()
+                    ) ||
+                    data.status
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.revision
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.title
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.maturity
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.description
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.caCompletedTime
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.caName
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.SapFeedbackTimeStamp.toLowerCase().includes(
+                      this.globalSearch.toLowerCase()
+                    ) ||
+                    data.SapFeedbackMessage.toLowerCase().includes(
+                      this.globalSearch.toLowerCase()
+                    )
+                  );
+                }));
             }
-          }
+          },
         },
         mounted() {
           // this.arrFilterData = this.BOMComponentsReceivedFromWS;
@@ -2096,7 +2173,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           this.date = formattedToday;
           // get the time as a string
           this.time = date1.toLocaleTimeString();
-        }
+        },
       });
       myWidget.vueapp = vueapp;
     },
