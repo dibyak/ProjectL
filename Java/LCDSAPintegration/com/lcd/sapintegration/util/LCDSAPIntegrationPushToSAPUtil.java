@@ -23,9 +23,6 @@ import matrix.db.JPO;
 
 public class LCDSAPIntegrationPushToSAPUtil extends RestService {
 
-	private static final String KEY_SUCCESS = "Success";
-	private static final String SC_OK = "200";
-	private static final String KEY_RESPONSE = "response";
 	private static final String KEY_ERROR_MESSAGE = "ErrorMessage";
 	private static final String KEY_STATUS = "status";
 
@@ -55,7 +52,7 @@ public class LCDSAPIntegrationPushToSAPUtil extends RestService {
 			jsonReader = Json.createReader(new StringReader(strParamString));
 			JsonObject joRequest = jsonReader.readObject();
 
-			String connectionId =  joRequest.get(KEY_CONNECTION_ID).toString().replace("\"", "");
+			String connectionId =  joRequest.get(LCDSAPIntegrationDataConstants.PROPERTY_CONNECTION_ID).toString().replace("\"", "");
 			String bomId = joRequest.get(KEY_BOM_COMPONENT_ID).toString().replace("\"", "");
 			bomName = joRequest.get(KEY_BOM_NAME).toString().replace("\"", "");
 			String caId = joRequest.get(KEY_CA_ID).toString().replace("\"", "");
@@ -99,12 +96,12 @@ public class LCDSAPIntegrationPushToSAPUtil extends RestService {
 				if (strResponse == null) {
 					throw new NullPointerException("Null Response from SAP");
 				} else {
-					if (strResponse.equalsIgnoreCase(SC_OK)) {
+					if (strResponse.equalsIgnoreCase(RESPONSE_STATUS_CODE_OK)) {
 						domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
 								MSG_JSON_FORMAT_VALIDATION_COMPLETED);
 						JsonObjectBuilder jobRes = Json.createObjectBuilder();
-						jobRes.add(KEY_STATUS, KEY_SUCCESS);
-						jobRes.add(KEY_RESPONSE, strResponse);
+						jobRes.add(KEY_STATUS, VALUE_SUCCESS);
+						jobRes.add(PROPERTY_RESPONSE, strResponse);
 
 						res = Response.ok(jobRes.build().toString()).type(MediaType.APPLICATION_JSON).build();
 					} else {
@@ -114,7 +111,7 @@ public class LCDSAPIntegrationPushToSAPUtil extends RestService {
 								MSG_JSON_FORMAT_VALIDATION_FAILED);
 						JsonObjectBuilder jobRes = Json.createObjectBuilder();
 						jobRes.add(KEY_STATUS, STATUS_FAILED);
-						jobRes.add(KEY_RESPONSE, strResponse);
+						jobRes.add(PROPERTY_RESPONSE, strResponse);
 						jobRes.add(KEY_BOM_NAME, bomName);
 
 						res = Response.ok(jobRes.build().toString()).type(MediaType.APPLICATION_JSON).build();
