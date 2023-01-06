@@ -45,11 +45,12 @@ public class LCD_Constants_mxJPO
     public static final String ATTR__SAPBOMUPDATEDON_MANUFACTURINGASSEMBLY =  "attribute[XP_CreateAssembly_Ext.LCD_SAPBOMUpdateOn]";
     
     
-    public static final String ATTR__SAP_UNIQUEID= "LCDMF_ManufacturingAssembly.LCDMF_SAPUniqueID";
-    public static final String ATTR__SAPMBOM_UPDATED_ON="LCDMF_ManufacturingAssembly.LCDMF_SAPMBOMUpdatedOn"; 
-    public static final String ATTR__SAP_INSATNCE_UPDATED_ON="LCD_MBOMInstance.LCD_SAPMBOMUpdatedOn";
+    public static final String ATTR__SAP_UNIQUEID= "attribute[LCDMF_ManufacturingAssembly.LCDMF_SAPUniqueID]";
+    public static final String ATTR__SAPMBOM_UPDATED_ON="attribute[LCDMF_ManufacturingAssembly.LCDMF_SAPMBOMUpdatedOn]"; 
+    public static final String ATTR__SAP_INSATNCE_UPDATED_ON="attribute[LCD_MBOMInstance.LCD_SAPMBOMUpdatedOn]";
     
-    public static final String ATTR__SAP_CAD_INSATNCE_UPDATED_ON="LCD_CADInstanceExt.LCD_SAPBOMUpdatedOn";
+    public static final String ATTR__SAP_CAD_INSATNCE_UPDATED_ON="attribute[LCD_CADInstanceExt.LCD_SAPBOMUpdatedOn]";
+    public static final String ATTR__HASCONFIGEFFECTIVITY = "attribute[PLMInstance.V_hasConfigEffectivity]" ;
     
     public static final String TITLE_CHANGEACTION = "attribute[Synopsis]";
     public static final String CHANGETYPE_CHANGEACTION= "attribute[LCD_3ChangeType]";
@@ -58,6 +59,11 @@ public class LCD_Constants_mxJPO
     public static final String REASONFORCHANGE_CHANGEACTION= "attribute[LCD_4ReasonForChange]";
     public static final String CATEGORYOFCHANGE_CHANGEACTION= "attribute[CategoryofChange]";
     public static final String RELEASEDDATE_CHANGEACTION = "attribute[ActualCompletionDate]";
+    
+    
+    public static final String PROPOSED_APPLICABILITY_START_DATE = "attribute_LCD_5ProposedApplicabilityStartDate";
+    public static final String PROPOSED_APPLICABILITY_END_DATE = "attribute_LCD_6ProposedApplicabilityEndDate";
+    
 
     public static final String ATTR__V_NAME_VPMREFERENCE= "attribute[V_Name]";
     public static final String ATTR__PROCUREMENTINTENT_VPMREFERENCE= "attribute[XP_VPMReference_Ext.AtievaProcurementIntent]";
@@ -107,8 +113,9 @@ public class LCD_Constants_mxJPO
     public static final String RELEASED = "RELEASED";
     
     public static final String NOT_APPLICABLE ="NA";
-    
+    public static final String CFG_EXPOSED_EXCEPTION  = "dassault_systemes.plm.config.exposed.exception.CfgExposedException";
     public static final String FALSE = "FALSE";
+    public static final String TRUE = "TRUE";
     
     protected static final String EFFECTIVITY_CURRENT_EVOLUTION = "Effectivity_Current_Evolution";
     protected static final String EFFECTIVITY_PROJECTED_EVOLUTION = "Effectivity_Projected_Evolution";
@@ -124,8 +131,6 @@ public class LCD_Constants_mxJPO
 	public static final String ATTR_LCD_PROCESS_STATUS_FLAG = "LCD_ProcessStatusFlag";
 	public static final String ATTR_LCD_REASON_FOR_FAILURE = "LCD_ReasonforFailure";
 	public static final String ATTR_LCD_CAID = "LCD_CAID";
-	public static final String VALUE_STATUS_FAILED = "Failed";
-	public static final String VALUE_STATUS_COMPLETE = "Complete";
 	public static final String REL_LCD_SAP_BOM_INTERFACE = "LCD_SAPBOMInterface";
 	public static final String STATUS_COMPLETE = "Complete";
 	public static final String STATUS_IN_WORK = "In Work";
