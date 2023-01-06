@@ -65,12 +65,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 
 	public static final String LCD_3DX_SAP_INTEGRATION_KEY = "LCD_3DXSAPStringResource_en";
 
-	public static final String TYPE_LCD_BOM_ANCHOR_OBJECT = "LCD_BOMAnchorObject";
-	public static final String NAME_LCD_ANCHOR_OBJECT = "LCD_AnchorObject";
-	public static final String REV_LCD_ANCHOR_OBJECT = "A";
 	public static final String POLICY_LCD_3DX_SAP_INTEGRATION = "LCD_3DXSAPIntegration";
 	public static final String REL_LCD_SAP_BOM_INTERFACE = "LCD_SAPBOMInterface";
-	public static final String VAULT_ESERVICE_PRODUCTION = "eService Production";
 
 	public static final String ATTR_LCD_PROCESS_STATUS_FLAG = "LCD_ProcessStatusFlag";
 	public static final String ATTR_LCD_REASON_FOR_FAILURE = "LCD_ReasonforFailure";
@@ -85,10 +81,6 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	private static final String MSG_JSON_FORMAT_VALIDATION_FAILED = "JSON Format Validation Failed";
 	private static final String MSG_JSON_FORMAT_VALIDATION_COMPLETED = "JSON Format Validation Completed";
 
-	public static final String KEY_CONNECTION_ID = "ConnectionID";
-	public static final String KEY_BOM_COMPONENT_ID = "BOMComponentID";
-	public static final String KEY_BOM_NAME = "BOMName";
-	public static final String KEY_CA_ID = "CAID";
 	public static final long TIME_CONVERSION = 86400000;
 	public static final long DAYS_IN_YEAR = 365;
 
@@ -116,8 +108,6 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @throws Exception
 	 */
 	public void scheduledPushToSAP(Context context, String[] strArgs) throws Exception {
-		
-		
 		boolean isPresent = checkAncObjPresent(context);
 		if(isPresent) {
 			MapList bomComponentsMapList = findRelevantObjectsConnectedToAnchorObject(context);
