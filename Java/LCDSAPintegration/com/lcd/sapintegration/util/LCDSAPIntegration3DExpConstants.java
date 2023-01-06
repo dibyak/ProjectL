@@ -18,6 +18,10 @@ public class LCDSAPIntegration3DExpConstants {
 	public final String SELECT_ATTRIBUTE_PLMENTITY_V_NAME = DomainObject.getAttributeSelect(ATTRIBUTE_PLMENTITY_V_NAME);
 	public final String TYPE_LCD_BOM_ANCHOR_OBJECT = PropertyUtil.getSchemaProperty(context, "type_LCD_BOMAnchorObject");
 	public final String VAULT_ESERVICE_PRODUCTION = PropertyUtil.getSchemaProperty(context, "vault_eServiceProduction");
+	public final String ATTRIBUTE_LCD_PROCESS_STATUS_FLAG = PropertyUtil.getSchemaProperty(context, "attribute_LCD_ProcessStatusFlag");
+	public final String ATTRIBUTE_LCD_REASON_FOR_FAILURE = PropertyUtil.getSchemaProperty(context, "attribute_LCD_ReasonforFailure");
+	public final String SELECT_ATTRIBUTE_LCD_PROCESS_STATUS_FLAG = DomainObject.getAttributeSelect(ATTRIBUTE_LCD_PROCESS_STATUS_FLAG);
+	public final String SELECT_ATTRIBUTE_LCD_REASON_FOR_FAILURE = DomainObject.getAttributeSelect(ATTRIBUTE_LCD_REASON_FOR_FAILURE);
 	
 	public LCDSAPIntegration3DExpConstants(Context context) {
 		this.context = context;
