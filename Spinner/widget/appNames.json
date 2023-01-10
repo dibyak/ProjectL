@@ -12,17 +12,18 @@
       }
     },
     "attributes": {
-      "launchinfos": "https://sjc01en3apapd01.corp.lucid.lcl:447/3DSpace/webapps/LCDapps/Widget/index.html",
+      "launchinfos": "https://sjc01en3apapd01.corp.lucid.lcl:447/3DSpace/webapps/LCDapps/LCD_PLM_SAP_Integration/index.html",
       "exe": null,
       "quadrant": "north",
-      "name": "3DExp SAP Integration Hurray",
-      "tooltip": "PLM SAP Integration Widget",
+      "name": "3DExp SAP Integration",
+      "tooltip": "3DExp SAP Integration",
       "icon": null,
       "description": null,
       "type": "widget",
       "error": null,
-      "config": null
+      "config": "https://sjc01en3apapd01.corp.lucid.lcl:447/3DSpace/webapps/LCDapps/LCD_PLM_SAP_Integration/conf/PLM_SAP_Integration_config.json"
     },
     "type": "custom/applications"
   }
   ]
+  

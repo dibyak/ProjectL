@@ -1,45 +1,58 @@
 define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
   "UWA/Drivers/jQuery",
   "vue",
-  'DS/PlatformAPI/PlatformAPI',
-  'DS/WAFData/WAFData',
-  "LCD/LCDLIB/scripts/vuetify",
-  "css!LCD/LCDLIB/styles/vuetify.min.css",
+  "DS/PlatformAPI/PlatformAPI",
+  "DS/WAFData/WAFData",
+  "LCD/LCD_PLM_SAP_Integration/lib/scripts/vuetify.min",
+  "i18n!LCD/LCD_PLM_SAP_Integration/nls/PLM_SAP_Integration_nls",
+  "css!LCD/LCD_PLM_SAP_Integration/lib/styles/vuetify.min.css",
   "css!LCD/LCDLIB/styles/google.css",
   "css!LCD/LCDLIB/styles/materialdesignicons.min.css",
-  "css!LCD/LCD_PLM_SAP_Integration/assets/styles/style.css"
-], function ($,Vue,PlatformAPI,WAFData, Vuetify) {
-  
+  "css!LCD/LCD_PLM_SAP_Integration/assets/styles/style.css",
+], function ($, Vue, PlatformAPI, WAFData, Vuetify, PLM_SAP_Integration_nls) {
   Vue.use(Vuetify, {});
   var myWidget = {
+    jsonResponse: "",
     onLoad: function () {
-      console.log("On Load call!!");
-      var apps = PlatformAPI.getAllApplicationConfigurations();							
-				for (var i = 0; i < apps.length; i++) {
-					if (apps[i]["propertyKey"] === "app.urls.myapps") {
-						var u = new URL(apps[i]["propertyValue"]);
-						_3dspaceUrl = u.href;
-						break;
-					}
-				}
+      // console.log("On Load call!!");
+      var apps = PlatformAPI.getAllApplicationConfigurations();
+      	for (var i = 0; i < apps.length; i++) {
+      		if (apps[i]["propertyKey"] === "app.urls.myapps") {
+      			var u = new URL(apps[i]["propertyValue"]);
+      			_3dspaceUrl = u.href;
+      			break;
+      		}
+      	}
         console.log(_3dspaceUrl);
-      myWidget.callWebservice1();
+      myWidget.webserviceToGetAllBOMComponents();
       myWidget.setVueTemplate();
       myWidget.loadData();
-      // myWidget.callWebservice2();
     },
     setVueTemplate: () => {
       var $body = $(widget.body);
-      var c = `<div id='app'>
+      var vueTags = `<div id='app'>
       <v-app id="inspire">
     <p style="text-align: right;">Last refreshed on: {{ date }} {{ time }}</p>
     <div id="title">
       <h1>3DX-SAP Integration</h1>
     </div>
-    <!--<<v-container id="div" v-bind="get">
-    {{maDetails}}
-    </v-container>-->
-    <v-main>
+    <v-container>
+    <div class="snackbar_div">
+      <v-snackbar v-model="snackbar" v-for="item in snackbarMsg" :key="item" :color="snackbarColor" top right :timeout="4000">
+        <p><v-icon>mdi-check-circle</v-icon>{{item}}</p>
+        <template v-slot:action="{ attrs }">
+        <v-btn
+          text
+          color="white"
+          v-bind="attrs"
+          @click="snackbar = false"
+        >
+        <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </template>
+      </v-snackbar>
+    </div>
+    </v-container>
       <div id="tabdiv">
         <v-tabs
           id="tabs"
@@ -49,37 +62,52 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           hide-slider
           color="black"
         >
-          <v-tab :href="'#tab-5'" active-class="teal lighten-4">
+          <v-tab :href="'#tab-All'" active-class="teal lighten-2">
             All
           </v-tab>
-          <v-tab :href="'#tab-1'" active-class="yellow lighten-2">
+          <v-tab :href="'#tab-Waiting'" active-class="yellow lighten-2">
             Waiting
           </v-tab>
-          <v-tab :href="'#tab-2'" active-class="blue lighten-2">
+          <v-tab :href="'#tab-InWork'" active-class="blue lighten-2">
             Inwork
           </v-tab>
-          <v-tab :href="'#tab-3'" active-class="green lighten-2">
+          <v-tab :href="'#tab-Complete'" active-class="green lighten-2">
             Complete
           </v-tab>
-          <v-tab :href="'#tab-4'" active-class="red lighten-2">
+          <v-tab :href="'#tab-Failed'" active-class="red lighten-2">
             Failed
           </v-tab>
         </v-tabs>
       </div>
       <v-tabs-items v-model="model">
         <v-tab-item
-          :value="'tab-1'"
+          :value="'tab-Waiting'"
           :transition="false"
           :reverse-transition="false"
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
+                <v-btn
+                  depressed
+                  color="primary"
+                  class="buttons"
+                  @click="export_table_to_csv_method"
+                  >Export table to CSV
+                </v-btn>
+                <v-btn
+                  depressed
+                  color="primary"
+                  class="buttons"
+                  @click="export_part_data"
+                  :disabled="!(selected.length == 1)"
+                  >Export part data to CSV
+                </v-btn>
               <v-spacer></v-spacer>
               <v-text-field
+              class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
+                label="Search..."
                 color="blue"
                 clear-icon="mdi-close-circle"
                 placeholder="Search..."
@@ -91,48 +119,50 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               >
               </v-text-field>
               <v-btn
-                type="button"
-                id="searchbtn"
-                color="#EEEEEE"
-                @click="searchTable"
-                >Search</v-btn
-              >
+                    depressed
+                    color="primary"
+                    class="buttons"
+                    @click="searchTable"
+                    id="searchbtn"
+                    >Search
+                  </v-btn>
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
                 v-model="selected"
-                :headers="headers"
-                :items="itemsWithSno1"
-                item-key="maName"
+                :headers="headersForSeperateTab"
+                :items="methodToAddSrNoInWaitingTable"
+                item-key="BOMComponentName"
                 :search="search"
                 hide-default-footer
                 fixed-header
-                height="300px"
+                height="auto"
                 show-select
                 class="elevation-1"
                 elevation="8"
-                checkbox-color="blue"
+                checkbox-color="teal lighten-2"
+                must-sort
               >
-                <template v-slot:header.maName="{ header }">
+                <template v-slot:header.BOMComponentName="{ header }">
                   {{ header.text }}
                   <v-menu offset-y :close-on-content-click="false">
                     <template v-slot:activator="{ on, attrs }">
                       <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="maName ? 'primary' : ''">
+                        <v-icon small :color="BOMComponentName ? 'primary' : ''">
                           mdi-magnify-expand
                         </v-icon>
                       </v-btn>
                     </template>
                     <div style="background-color: white; width: 280px">
                       <v-text-field
-                        v-model="maName"
+                        v-model="BOMComponentName"
                         class="pa-4"
                         type="text"
                         label="Enter the search term"
                         :autofocus="true"
                       ></v-text-field>
                       <v-btn
-                        @click="maName = ''"
+                        @click="BOMComponentName = ''"
                         small
                         text
                         color="primary"
@@ -352,18 +382,33 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       </v-tabs-items>
       <v-tabs-items v-model="model">
         <v-tab-item
-          :value="'tab-2'"
+          :value="'tab-InWork'"
           :transition="false"
           :reverse-transition="false"
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
+            <v-btn
+                  depressed
+                  color="primary"
+                  class="buttons"
+                  @click="export_table_to_csv_method"
+                  >Export table to CSV
+                </v-btn>
+                <v-btn
+                  depressed
+                  color="primary"
+                  class="buttons"
+                  @click="export_part_data"
+                  :disabled="!(selected.length == 1)"
+                  >Export part data to CSV
+                </v-btn>
               <v-spacer></v-spacer>
               <v-text-field
+              class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
+                label="Search..."
                 color="blue"
                 clear-icon="mdi-close-circle"
                 placeholder="Search..."
@@ -374,49 +419,52 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 @click:clear="clear"
               >
               </v-text-field>
-              <v-btn
-                type="button"
-                id="searchbtn"
-                color="#EEEEEE"
-                @click="searchTable"
-                >Search</v-btn
-              >
+                  <v-btn
+                    depressed
+                    color="primary"
+                    class="buttons"
+                    @click="searchTable"
+                    id="searchbtn"
+                    >
+                    Search
+                  </v-btn>
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
                 v-model="selected"
-                :headers="headers"
-                :items="itemsWithSno2"
-                item-key="maName"
+                :headers="headersForSeperateTab"
+                :items="methodToAddSrNoInInWorkTable"
+                item-key="BOMComponentName"
                 :search="search"
                 hide-default-footer
                 fixed-header
-                height="300px"
+                height="auto"
                 show-select
                 class="elevation-1"
                 elevation="8"
-                checkbox-color="blue"
+                checkbox-color="teal lighten-2"
+                must-sort
               >
-                <template v-slot:header.maName="{ header }">
+                <template v-slot:header.BOMComponentName="{ header }">
                   {{ header.text }}
                   <v-menu offset-y :close-on-content-click="false">
                     <template v-slot:activator="{ on, attrs }">
                       <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="maName ? 'primary' : ''">
+                        <v-icon small :color="BOMComponentName ? 'primary' : ''">
                           mdi-magnify-expand
                         </v-icon>
                       </v-btn>
                     </template>
                     <div style="background-color: white; width: 280px">
                       <v-text-field
-                        v-model="maName"
+                        v-model="BOMComponentName"
                         class="pa-4"
                         type="text"
                         label="Enter the search term"
                         :autofocus="true"
                       ></v-text-field>
                       <v-btn
-                        @click="maName = ''"
+                        @click="BOMComponentName = ''"
                         small
                         text
                         color="primary"
@@ -636,18 +684,33 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       </v-tabs-items>
       <v-tabs-items v-model="model">
         <v-tab-item
-          :value="'tab-3'"
+          :value="'tab-Complete'"
           :transition="false"
           :reverse-transition="false"
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
+            <v-btn
+                  depressed
+                  color="primary"
+                  class="buttons"
+                  @click="export_table_to_csv_method"
+                  >Export table to CSV
+                </v-btn>
+                <v-btn
+                  depressed
+                  color="primary"
+                  class="buttons"
+                  @click="export_part_data"
+                  :disabled="!(selected.length == 1)"
+                  >Export part data to CSV
+                </v-btn>
               <v-spacer></v-spacer>
               <v-text-field
+              class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
+                label="Search..."
                 color="blue"
                 clear-icon="mdi-close-circle"
                 placeholder="Search..."
@@ -658,337 +721,51 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 @click:clear="clear"
               >
               </v-text-field>
-              <v-btn
-                type="button"
-                id="searchbtn"
-                color="#EEEEEE"
-                @click="searchTable"
-                >Search</v-btn
-              >
+                  <v-btn
+                    depressed
+                    color="primary"
+                    class="buttons"
+                    @click="searchTable"
+                    id="searchbtn"
+                    >Search
+                  </v-btn>
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
                 v-model="selected"
-                :headers="headers"
-                :items="itemsWithSno3"
-                item-key="maName"
+                :headers="headersForSeperateTab"
+                :items="methodToAddSrNoInCompleteTable"
+                item-key="BOMComponentName"
                 :search="search"
                 hide-default-footer
                 fixed-header
-                height="300px"
+                height="auto"
                 show-select
                 class="elevation-1"
                 elevation="8"
-                checkbox-color="blue"
+                checkbox-color="teal lighten-2"
+                must-sort
               >
-                <template v-slot:header.maName="{ header }">
+                <template v-slot:header.BOMComponentName="{ header }">
                   {{ header.text }}
                   <v-menu offset-y :close-on-content-click="false">
                     <template v-slot:activator="{ on, attrs }">
                       <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="maName ? 'primary' : ''">
+                        <v-icon small :color="BOMComponentName ? 'primary' : ''">
                           mdi-magnify-expand
                         </v-icon>
                       </v-btn>
                     </template>
                     <div style="background-color: white; width: 280px">
                       <v-text-field
-                        v-model="maName"
+                        v-model="BOMComponentName"
                         class="pa-4"
                         type="text"
                         label="Enter the search term"
                         :autofocus="true"
                       ></v-text-field>
                       <v-btn
-                        @click="maName = ''"
-                        small
-                        text
-                        color="primary"
-                        class="ml-2 mb-2"
-                        >Clean</v-btn
-                      >
-                    </div>
-                  </v-menu>
-                </template>
-                <template v-slot:header.status="{ header }">
-                  {{ header.text }}
-                  <v-menu offset-y :close-on-content-click="false">
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="status ? 'primary' : ''">
-                          mdi-magnify-expand
-                        </v-icon>
-                      </v-btn>
-                    </template>
-                    <div style="background-color: white; width: 280px">
-                      <v-text-field
-                        v-model="status"
-                        class="pa-4"
-                        type="text"
-                        label="Enter the search term"
-                        :autofocus="true"
-                      ></v-text-field>
-                      <v-btn
-                        @click="status = ''"
-                        small
-                        text
-                        color="primary"
-                        class="ml-2 mb-2"
-                        >Clean</v-btn
-                      >
-                    </div>
-                  </v-menu>
-                </template>
-                <template v-slot:header.revision="{ header }">
-                  {{ header.text }}
-                  <v-menu offset-y :close-on-content-click="false">
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="revision ? 'primary' : ''">
-                          mdi-magnify-expand
-                        </v-icon>
-                      </v-btn>
-                    </template>
-                    <div style="background-color: white; width: 280px">
-                      <v-text-field
-                        v-model="revision"
-                        class="pa-4"
-                        type="text"
-                        label="Enter the search term"
-                        :autofocus="true"
-                      ></v-text-field>
-                      <v-btn
-                        @click="revision = ''"
-                        small
-                        text
-                        color="primary"
-                        class="ml-2 mb-2"
-                        >Clean</v-btn
-                      >
-                    </div>
-                  </v-menu>
-                </template>
-                <template v-slot:header.title="{ header }">
-                  {{ header.text }}
-                  <v-menu offset-y :close-on-content-click="false">
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="title ? 'primary' : ''">
-                          mdi-magnify-expand
-                        </v-icon>
-                      </v-btn>
-                    </template>
-                    <div style="background-color: white; width: 280px">
-                      <v-text-field
-                        v-model="title"
-                        class="pa-4"
-                        type="text"
-                        label="Enter the search term"
-                        :autofocus="true"
-                      ></v-text-field>
-                      <v-btn
-                        @click="title = ''"
-                        small
-                        text
-                        color="primary"
-                        class="ml-2 mb-2"
-                        >Clean</v-btn
-                      >
-                    </div>
-                  </v-menu>
-                </template>
-                <template v-slot:header.maturity="{ header }">
-                  {{ header.text }}
-                  <v-menu offset-y :close-on-content-click="false">
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="maturity ? 'primary' : ''">
-                          mdi-magnify-expand
-                        </v-icon>
-                      </v-btn>
-                    </template>
-                    <div style="background-color: white; width: 280px">
-                      <v-text-field
-                        v-model="maturity"
-                        class="pa-4"
-                        type="text"
-                        label="Enter the search term"
-                        :autofocus="true"
-                      ></v-text-field>
-                      <v-btn
-                        @click="maturity = ''"
-                        small
-                        text
-                        color="primary"
-                        class="ml-2 mb-2"
-                        >Clean</v-btn
-                      >
-                    </div>
-                  </v-menu>
-                </template>
-                <template v-slot:header.caName="{ header }">
-                  {{ header.text }}
-                  <v-menu offset-y :close-on-content-click="false">
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="caName ? 'primary' : ''">
-                          mdi-magnify-expand
-                        </v-icon>
-                      </v-btn>
-                    </template>
-                    <div style="background-color: white; width: 280px">
-                      <v-text-field
-                        v-model="caName"
-                        class="pa-4"
-                        type="text"
-                        label="Enter the search term"
-                        :autofocus="true"
-                      ></v-text-field>
-                      <v-btn
-                        @click="caName = ''"
-                        small
-                        text
-                        color="primary"
-                        class="ml-2 mb-2"
-                        >Clean</v-btn
-                      >
-                    </div>
-                  </v-menu>
-                </template>
-                <template v-slot:header.description="{ header }">
-                  {{ header.text }}
-                  <v-menu offset-y :close-on-content-click="false">
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="description ? 'primary' : ''">
-                          mdi-magnify-expand
-                        </v-icon>
-                      </v-btn>
-                    </template>
-                    <div style="background-color: white; width: 280px">
-                      <v-text-field
-                        v-model="description"
-                        class="pa-4"
-                        type="text"
-                        label="Enter the search term"
-                        :autofocus="true"
-                      ></v-text-field>
-                      <v-btn
-                        @click="description = ''"
-                        small
-                        text
-                        color="primary"
-                        class="ml-2 mb-2"
-                        >Clean</v-btn
-                      >
-                    </div>
-                  </v-menu>
-                </template>
-                <template v-slot:header.caCompletedTime="{ header }">
-                  {{ header.text }}
-                  <v-menu offset-y :close-on-content-click="false">
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="caCompletedTime ? 'primary' : ''">
-                          mdi-magnify-expand
-                        </v-icon>
-                      </v-btn>
-                    </template>
-                    <div style="background-color: white; width: 280px">
-                      <v-text-field
-                        v-model="caCompletedTime"
-                        class="pa-4"
-                        type="text"
-                        label="Enter the search term"
-                        :autofocus="true"
-                      ></v-text-field>
-                      <v-btn
-                        @click="caCompletedTime = ''"
-                        small
-                        text
-                        color="primary"
-                        class="ml-2 mb-2"
-                        >Clean</v-btn
-                      >
-                    </div>
-                  </v-menu>
-                </template>
-              </v-data-table>
-            </v-container>
-          </v-sheet>
-          <!-- </div> -->
-        </v-tab-item>
-      </v-tabs-items>
-      <v-tabs-items v-model="model">
-        <v-tab-item
-          :value="'tab-4'"
-          :transition="false"
-          :reverse-transition="false"
-        >
-          <v-sheet class="overflow-y-auto" max-height="800">
-            <v-app-bar class="ma-5" color="white" flat>
-              <v-btn id="repushbtn" color="#EEEEEE" @click="rePush"
-                >Re-Push to SAP</v-btn
-              >
-              <v-spacer></v-spacer>
-              <v-text-field
-                id="searchfield"
-                v-model="globalSearch"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
-                color="blue"
-                clear-icon="mdi-close-circle"
-                placeholder="Search..."
-                rounded
-                centered
-                outlined
-                clearable
-                @click:clear="clear"
-              >
-              </v-text-field>
-              <v-btn
-                type="button"
-                id="searchbtn"
-                color="#EEEEEE"
-                @click="searchTable"
-                >Search</v-btn
-              >
-            </v-app-bar>
-            <v-container fluid style="height: 1500px; overflow: auto;">
-              <v-data-table
-                v-model="selected"
-                :headers="headers"
-                :items="itemsWithSno4"
-                item-key="maName"
-                :search="search"
-                hide-default-footer
-                fixed-header
-                height="300px"
-                show-select
-                class="elevation-1"
-                elevation="8"
-                checkbox-color="blue"
-              >
-                <template v-slot:header.maName="{ header }">
-                  {{ header.text }}
-                  <v-menu offset-y :close-on-content-click="false">
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="maName ? 'primary' : ''">
-                          mdi-magnify-expand
-                        </v-icon>
-                      </v-btn>
-                    </template>
-                    <div style="background-color: white; width: 280px">
-                      <v-text-field
-                        v-model="maName"
-                        class="pa-4"
-                        type="text"
-                        label="Enter the search term"
-                        :autofocus="true"
-                      ></v-text-field>
-                      <v-btn
-                        @click="maName = ''"
+                        @click="BOMComponentName = ''"
                         small
                         text
                         color="primary"
@@ -1209,21 +986,351 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       </v-tabs-items>
       <v-tabs-items v-model="model">
         <v-tab-item
-          :value="'tab-5'"
+          :value="'tab-Failed'"
           :transition="false"
           :reverse-transition="false"
         >
           <v-sheet class="overflow-y-auto" max-height="800">
             <v-app-bar class="ma-5" color="white" flat>
-              <v-btn id="repushbtn" color="#EEEEEE" @click="rePush"
-                >Re-Push to SAP</v-btn
-              >
+                  <v-btn class="buttons" @click="rePushToSAPMethod"
+                  depressed
+                  color="primary"
+                  :disabled="!failedStatus">
+                  Re push to SAP
+                  </v-btn>
+              <v-btn
+              depressed
+              color="primary"
+              class="buttons"
+              @click="export_table_to_csv_method"
+              >Export table to CSV
+            </v-btn>
+            <v-btn
+              depressed
+              color="primary"
+              class="buttons"
+              @click="export_part_data"
+              :disabled="!(selected.length == 1)"
+              >Export part data to CSV
+            </v-btn>
               <v-spacer></v-spacer>
               <v-text-field
+              class="globalsearch"
                 id="searchfield"
                 v-model="globalSearch"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
+                label="Search..."
+                color="blue"
+                clear-icon="mdi-close-circle"
+                placeholder="Search..."
+                rounded
+                centered
+                outlined
+                clearable
+                @click:clear="clear"
+              >
+              </v-text-field>
+                  <v-btn
+                    depressed
+                    color="primary"
+                    class="buttons"
+                    @click="searchTable"
+                    id="searchbtn"
+                    >
+                    Search
+                  </v-btn>
+                </span>
+              </v-tooltip>
+            </v-app-bar>
+            <v-container fluid style="height: 1500px; overflow: auto;">
+              <v-data-table
+                v-model="selected"
+                :headers="headersForSeperateTab"
+                :items="methodToAddSrNoInFailedTable"
+                item-key="BOMComponentName"
+                :search="search"
+                hide-default-footer
+                fixed-header
+                height="auto"
+                show-select
+                elevation="8"
+                checkbox-color="teal lighten-2"
+                must-sort
+                @item-selected="methodToDisableRepushBtnOnSelect"
+                @toggle-select-all="methodToDisableRepushBtnOnSelectAll"
+              >
+                <template v-slot:header.BOMComponentName="{ header }">
+                  {{ header.text }}
+                  <v-menu offset-y :close-on-content-click="false">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-btn icon v-bind="attrs" v-on="on">
+                        <v-icon small :color="BOMComponentName ? 'primary' : ''">
+                          mdi-magnify-expand
+                        </v-icon>
+                      </v-btn>
+                    </template>
+                    <div style="background-color: white; width: 280px">
+                      <v-text-field
+                        v-model="BOMComponentName"
+                        class="pa-4"
+                        type="text"
+                        label="Enter the search term"
+                        :autofocus="true"
+                      ></v-text-field>
+                      <v-btn
+                        @click="BOMComponentName = ''"
+                        small
+                        text
+                        color="primary"
+                        class="ml-2 mb-2"
+                        >Clean</v-btn
+                      >
+                    </div>
+                  </v-menu>
+                </template>
+                <template v-slot:header.status="{ header }">
+                  {{ header.text }}
+                  <v-menu offset-y :close-on-content-click="false">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-btn icon v-bind="attrs" v-on="on">
+                        <v-icon small :color="status ? 'primary' : ''">
+                          mdi-magnify-expand
+                        </v-icon>
+                      </v-btn>
+                    </template>
+                    <div style="background-color: white; width: 280px">
+                      <v-text-field
+                        v-model="status"
+                        class="pa-4"
+                        type="text"
+                        label="Enter the search term"
+                        :autofocus="true"
+                      ></v-text-field>
+                      <v-btn
+                        @click="status = ''"
+                        small
+                        text
+                        color="primary"
+                        class="ml-2 mb-2"
+                        >Clean</v-btn
+                      >
+                    </div>
+                  </v-menu>
+                </template>
+                <template v-slot:header.revision="{ header }">
+                  {{ header.text }}
+                  <v-menu offset-y :close-on-content-click="false">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-btn icon v-bind="attrs" v-on="on">
+                        <v-icon small :color="revision ? 'primary' : ''">
+                          mdi-magnify-expand
+                        </v-icon>
+                      </v-btn>
+                    </template>
+                    <div style="background-color: white; width: 280px">
+                      <v-text-field
+                        v-model="revision"
+                        class="pa-4"
+                        type="text"
+                        label="Enter the search term"
+                        :autofocus="true"
+                      ></v-text-field>
+                      <v-btn
+                        @click="revision = ''"
+                        small
+                        text
+                        color="primary"
+                        class="ml-2 mb-2"
+                        >Clean</v-btn
+                      >
+                    </div>
+                  </v-menu>
+                </template>
+                <template v-slot:header.title="{ header }">
+                  {{ header.text }}
+                  <v-menu offset-y :close-on-content-click="false">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-btn icon v-bind="attrs" v-on="on">
+                        <v-icon small :color="title ? 'primary' : ''">
+                          mdi-magnify-expand
+                        </v-icon>
+                      </v-btn>
+                    </template>
+                    <div style="background-color: white; width: 280px">
+                      <v-text-field
+                        v-model="title"
+                        class="pa-4"
+                        type="text"
+                        label="Enter the search term"
+                        :autofocus="true"
+                      ></v-text-field>
+                      <v-btn
+                        @click="title = ''"
+                        small
+                        text
+                        color="primary"
+                        class="ml-2 mb-2"
+                        >Clean</v-btn
+                      >
+                    </div>
+                  </v-menu>
+                </template>
+                <template v-slot:header.maturity="{ header }">
+                  {{ header.text }}
+                  <v-menu offset-y :close-on-content-click="false">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-btn icon v-bind="attrs" v-on="on">
+                        <v-icon small :color="maturity ? 'primary' : ''">
+                          mdi-magnify-expand
+                        </v-icon>
+                      </v-btn>
+                    </template>
+                    <div style="background-color: white; width: 280px">
+                      <v-text-field
+                        v-model="maturity"
+                        class="pa-4"
+                        type="text"
+                        label="Enter the search term"
+                        :autofocus="true"
+                      ></v-text-field>
+                      <v-btn
+                        @click="maturity = ''"
+                        small
+                        text
+                        color="primary"
+                        class="ml-2 mb-2"
+                        >Clean</v-btn
+                      >
+                    </div>
+                  </v-menu>
+                </template>
+                <template v-slot:header.caName="{ header }">
+                  {{ header.text }}
+                  <v-menu offset-y :close-on-content-click="false">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-btn icon v-bind="attrs" v-on="on">
+                        <v-icon small :color="caName ? 'primary' : ''">
+                          mdi-magnify-expand
+                        </v-icon>
+                      </v-btn>
+                    </template>
+                    <div style="background-color: white; width: 280px">
+                      <v-text-field
+                        v-model="caName"
+                        class="pa-4"
+                        type="text"
+                        label="Enter the search term"
+                        :autofocus="true"
+                      ></v-text-field>
+                      <v-btn
+                        @click="caName = ''"
+                        small
+                        text
+                        color="primary"
+                        class="ml-2 mb-2"
+                        >Clean</v-btn
+                      >
+                    </div>
+                  </v-menu>
+                </template>
+                <template v-slot:header.description="{ header }">
+                  {{ header.text }}
+                  <v-menu offset-y :close-on-content-click="false">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-btn icon v-bind="attrs" v-on="on">
+                        <v-icon small :color="description ? 'primary' : ''">
+                          mdi-magnify-expand
+                        </v-icon>
+                      </v-btn>
+                    </template>
+                    <div style="background-color: white; width: 280px">
+                      <v-text-field
+                        v-model="description"
+                        class="pa-4"
+                        type="text"
+                        label="Enter the search term"
+                        :autofocus="true"
+                      ></v-text-field>
+                      <v-btn
+                        @click="description = ''"
+                        small
+                        text
+                        color="primary"
+                        class="ml-2 mb-2"
+                        >Clean</v-btn
+                      >
+                    </div>
+                  </v-menu>
+                </template>
+                <template v-slot:header.caCompletedTime="{ header }">
+                  {{ header.text }}
+                  <v-menu offset-y :close-on-content-click="false">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-btn icon v-bind="attrs" v-on="on">
+                        <v-icon small :color="caCompletedTime ? 'primary' : ''">
+                          mdi-magnify-expand
+                        </v-icon>
+                      </v-btn>
+                    </template>
+                    <div style="background-color: white; width: 280px">
+                      <v-text-field
+                        v-model="caCompletedTime"
+                        class="pa-4"
+                        type="text"
+                        label="Enter the search term"
+                        :autofocus="true"
+                      ></v-text-field>
+                      <v-btn
+                        @click="caCompletedTime = ''"
+                        small
+                        text
+                        color="primary"
+                        class="ml-2 mb-2"
+                        >Clean</v-btn
+                      >
+                    </div>
+                  </v-menu>
+                </template>
+              </v-data-table>
+            </v-container>
+          </v-sheet>
+          <!-- </div> -->
+        </v-tab-item>
+      </v-tabs-items>
+      <v-tabs-items v-model="model">
+        <v-tab-item
+          :value="'tab-All'"
+          :transition="false"
+          :reverse-transition="false"
+        >
+          <v-sheet class="overflow-y-auto" max-height="800">
+            <v-app-bar class="ma-5" color="white" flat>
+                  <v-btn class="buttons" @click="rePushToSAPMethod"
+                  color="primary"
+                  depressed
+                  :disabled="!failedStatus">
+                  Re-push to SAP
+                  </v-btn>
+                  <v-btn
+                    depressed
+                    color="primary"
+                    class="buttons"
+                    @click="export_table_to_csv_method"
+                    >Export table to CSV
+                  </v-btn>
+                  <v-btn
+                    depressed
+                    color="primary"
+                    class="buttons"
+                    @click="export_part_data"
+                    :disabled="!(selected.length == 1)"
+                    >Export part data to CSV
+                  </v-btn>
+              <v-spacer></v-spacer>
+              <v-text-field
+              class="globalsearch"
+                id="searchfield"
+                v-model="globalSearch"
+                label="Search..."
                 color="blue"
                 clear-icon="mdi-close-circle"
                 placeholder="Search..."
@@ -1232,32 +1339,37 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 centered
                 clearable
                 @click:clear="clear"
+                @keydown.enter="searchTable"
               >
               </v-text-field>
-              <v-btn
-                type="button"
-                id="searchbtn"
-                color="#EEEEEE"
-                @click="searchTable"
-                >Search</v-btn
-              >
+                  <v-btn
+                    depressed
+                    color="primary"
+                    class="buttons"
+                    @click="searchTable"
+                    id="searchbtn"
+                    >Search
+                  </v-btn>
+             
             </v-app-bar>
             <v-container fluid style="height: 1500px; overflow: auto;">
               <v-data-table
                 display: block
                 v-model="selected"
-                :headers="headers1"
-                :items="itemsWithSno"
-                item-key="maName"
+                :headers="headersForAllInOneTab"
+                :items="methodToAddSrNoInAllTab"
+                item-key="BOMComponentName"
                 :search="search"
-                hide-default-footer
                 fixed-header
                 height= "auto"
                 show-select
-                class="text-truncate elevation-1"
                 elevation="8"
-                checkbox-color="blue"
+                checkbox-color="teal lighten-2"
                 resizable="true"
+                must-sort
+                :custom-sort="methodtodoCustomSortinTable"
+                @item-selected="methodToDisableRepushBtnOnSelect"
+                @toggle-select-all="methodToDisableRepushBtnOnSelectAll"
               >
               <!-- <template v-slot:item.caCompletedTime="{ item }">
                 <div class="col-8 text-truncate">
@@ -1265,16 +1377,16 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 </div>
                 </template> -->
                 <template v-slot:item.status="{ item }">
-                  <v-chip :color="getColor(item.status)">
+                  <v-chip :color="getStatusColor(item.status)">
                     {{ item.status }}
                   </v-chip>
                 </template>
-                <template v-slot:header.maName="{ header }">
+                <template v-slot:header.BOMComponentName="{ header }">
                   {{ header.text }}
                   <v-menu offset-y :close-on-content-click="false">
                     <template v-slot:activator="{ on, attrs }">
                       <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="maName ? 'primary' : ''">
+                        <v-icon small :color="BOMComponentName ? 'primary' : ''">
                           mdi-magnify-expand
                         </v-icon>
                       </v-btn>
@@ -1284,13 +1396,13 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                         id="colfilter"
                         full-width
                         placeholder="Enter the search term"
-                        v-model="maName"
+                        v-model="BOMComponentName"
                         class="pa-4"
                         type="text"
                         :autofocus="true"
                       ></v-text-field>
                       <v-btn
-                        @click="maName = ''"
+                        @click="BOMComponentName = ''"
                         small
                         text
                         color="primary"
@@ -1515,239 +1627,248 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           </v-sheet>
         </v-tab-item>
       </v-tabs-items>
-    </v-main>
     <v-footer app>
       Lucid 3DX-SAP Integration Dashboard
     </v-footer>
   </v-app>
 						</div>`;
-      $body.html(c);
+      $body.html(vueTags);
     },
-    callWebservice1: function(){
+    webserviceToGetAllBOMComponents: function () {
       var _this = this;
-      WAFData.authenticatedRequest(_3dspaceUrl + "/LCDSAPIntegrationModeler/LCDSAPIntegrationService/getMA", {
-        method: "GET",
-        accept: "application/json",
-        onComplete: function(dataResp) {
-          var data = JSON.parse(dataResp);
-          _this.vueapp.details = data;
-          _this.vueapp.filterData = data;
-          // console.log("------------>>>" + _this.vueapp.details);
-          
-          // var data1 = JSON.stringify(data);
-          // console.log("DATA1 =" +data1);
-          // var data2 = JSON.parse(data1);
-          // _this.details = data1;
-          // console.table(data2);
-          // console.log("--------++++++---->>>" + _this.details);
-        },
-        onFailure: function(error) {
-          console.log(error);
+      WAFData.authenticatedRequest(_3dspaceUrl + '/LCDSAPIntegrationModeler/LCDSAPIntegrationService/getMA',
+      // WAFData.authenticatedRequest(widget.getValue("webserviceURLToGetAllBOMComponents"),
+        {
+          method: "GET",
+          accept: "application/json",
+          onComplete: function (dataResp) {
+            var data = JSON.parse(dataResp);
+            _this.vueapp.BOMComponentsReceivedFromWS = data;
+            _this.vueapp.arrFilterData = data;
+          },
+          onFailure: function (error) {
+            console.log(error);
+          },
+        }
+      );
+    },
+    webserviceForRepush: async function () {
+      debugger;
+      var _this = this;
+      // _this.vueapp.snackbarColor = "success";
+      // _this.vueapp.snackbar = true;
+      // _this.vueapp.snackbarMsg.push("SUCCESS!!");
+      // _this.vueapp.snackbarMsg.push("SUCCESS!! DARSHIT");
+      for (let i = 0; i < _this.vueapp.selected.length; i++) {
+        var Ca_ID = _this.vueapp.selected[i].caID;
+        var BOM_Comp_ID = _this.vueapp.selected[i].BOMComponentID;
+        var ma_name = _this.vueapp.selected[i].BOMComponentName;
+        var Connection_ID = _this.vueapp.selected[i].ConnectionID;
+        var data_to_be_Send_from_UI = {
+          CAID: Ca_ID,
+          BOMComponentID: BOM_Comp_ID,
+          ConnectionID: Connection_ID,
+          BOMName: ma_name,
+        };
+       await myWidget
+          .repush2(data_to_be_Send_from_UI)
+          .then(function () {
+            //_this.vueapp.snackbarMsg = [myWidget.jsonResponse];
+           _this.vueapp.snackbarMsg.push(myWidget.jsonResponse);
+
+            // _this.vueapp.snackbarMsg.push(_this.vueapp.selected[i].BOMComponentName);
+            console.log("MYJSON -->" + myWidget.jsonResponse);
+            if (_this.vueapp.snackbarMsg[i].status == "Success") {
+              _this.vueapp.snackbarColor = "success";
+              _this.vueapp.snackbar = true;
+              _this.vueapp.SearchMethod.map((x) => {
+                _this.vueapp.selected.map((y) => {
+                  if (x.BOMComponentID == y.BOMComponentID) {
+                    x.SapFeedbackMessage =
+                      PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_success;
+                  }
+                });
+              });
+            } else if (_this.vueapp.snackbarMsg[i].status == "Failed") {
+              _this.vueapp.snackbarColor = "error";
+              // _this.vueapp.snackbarMsg.push(returnData);
+              _this.vueapp.snackbar = true;
+              _this.vueapp.SearchMethod.map((x) => {
+                _this.vueapp.selected.map((y) => {
+                  if (x.BOMComponentID == y.BOMComponentID) {
+                    x.status = PLM_SAP_Integration_nls.failed;
+                    x.SapFeedbackMessage =
+                      PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_failed;
+                  }
+                });
+              });
+            }
+          })
+          .catch(function () {
+            alert("ERROR OCCURED!!!");
+            _this.vueapp.snackbarColor = "error";
+            _this.vueapp.snackbarMsg.push("ERROR OCCURED!!!");
+            console.log(_this.vueapp.snackbarMsg);
+            _this.vueapp.snackbar = true;
+
+            _this.vueapp.SearchMethod.map((x) => {
+              _this.vueapp.selected.map((y) => {
+                if (x.BOMComponentID == y.BOMComponentID) {
+                  x.status = PLM_SAP_Integration_nls.failed;
+                  x.SapFeedbackMessage =
+                    PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_failed;
+                }
+              });
+            });
+          });
+      }
+      _this.vueapp.selected = [];
+    },
+    repush2: function (data_to_be_Send_from_UI) {
+      return new Promise(function (resolve, reject) {
+        try {
+          WAFData.authenticatedRequest(
+            widget.getValue("webserviceURLForRepush"),
+            {
+              method: "POST",
+              accept: "application/json",
+              crossOrigin: true,
+              timeout: 7000,
+              data: JSON.stringify(data_to_be_Send_from_UI),
+              headers: {
+                "Content-Type": "application/json",
+              },
+
+              onComplete: function (myJson) {
+                // alert("ONLOAD CALLED!!!");
+                myWidget.jsonResponse = JSON.parse(myJson);
+                resolve();
+              },
+              onFailure: function (error) {
+                console.log( "--------> ERROR ON WEBSERVICE FAILURE :" +error);
+                reject();
+              },
+            }
+          );
+        } catch (err) {
+          console.log("------>>> ERROR CATCH :" +err);
         }
       });
     },
-    callWebservice2: function(){
-      debugger
-      // var payloadDetails;
+    webserviceToExportPartData: function () {
       var _this = this;
       var Ca_ID = _this.vueapp.selected[0].caID;
-      var BOM_Comp_ID = _this.vueapp.selected[0].maID;
-      var ma_name = _this.vueapp.selected[0].maName;
-      var Connection_ID = _this.vueapp.selected[0].ConnectionID;
-
-      var objSelected = {
-                          CAID :Ca_ID,
-                          BOMComponentID:BOM_Comp_ID,
-                          ConnectionID:Connection_ID,
-                          MaName: ma_name
-                        };
-                      console.log(objSelected);
-      WAFData.authenticatedRequest(_3dspaceUrl + "/LCDSAPIntegrationModeler/LCDPushToSAPServices/PushToSAP", {
-        method: "POST",
-        accept: "application/json",
-        crossOrigin: true,
-        timeout: 7000,
-        data : JSON.stringify(objSelected),
-        headers: {
-          'Content-Type': 'application/json'
+      var BOM_Comp_Type = "";
+      var BOM_Comp_ID = _this.vueapp.selected[0].BOMComponentID;
+      var dataTobeSendfromUI = {
+        CAID: Ca_ID,
+        BOMComponentID: BOM_Comp_ID,
+        BOMComponentType: BOM_Comp_Type,
+      };
+      WAFData.authenticatedRequest(
+        widget.getValue("webserviceURLToExportPartData"),
+        {
+          method: "POST",
+          accept: "application/json",
+          crossOrigin: true,
+          timeout: 7000,
+          data: JSON.stringify(dataTobeSendfromUI),
+          headers: {
+            "Content-Type": "application/json",
           },
-        onComplete: function(myJson) {
-          var returnData = JSON.parse(myJson);
-          var returnData1 = JSON.stringify(returnData);
-          _this.vueapp.responseData = returnData;
-          console.log("responce data:" + returnData1);
-        },
-        onFailure: function(error) {
-          console.log(error);
+          onComplete: function (dataResp) {
+            var data = JSON.parse(dataResp);
+            _this.vueapp.partData = data;
+            console.table("RESPONCE ------>" + dataResp);
+          },
+          onFailure: function (error) {
+            console.log(error);
+          },
         }
-      });
+      );
     },
+
     loadData: function () {
       var vueapp = new Vue({
         el: "#app",
         vuetify: new Vuetify(),
         data: {
-          responseData:[],
-            type: 1,
-            active: true,
-            maName: "",
-            status: "",
-            revision: "",
-            title: "",
-            maturity: "",
-            description: "",
-            caCompletedTime: "",
-            caName: "",
-            SapFeedbackTimeStamp: "",
-            SapFeedbackMessage: "",
-            filterData: [],
-            model: null,
-            singleSelect: false,
-            search: "",
-            globalSearch: "",
-            details: [],
-            selected: [],
-            headers1: [
-              {
-                text: "Sr. No.",
-                value: "sno",
-                width: "92px",
-                class: "word-wrap-example"
-              },
-              {
-                text: "MA Name",
-                align: "start",
-                sortable: false,
-                //   width: '200px',
-                value: "maName",
-                class: "word-wrap-example"
-              },
-              {
-                text: "Status",
-                value: "status",
-                sortable: false,
-                class: "word-wrap-example"
-              },
-              {
-                text: "Revision",
-                value: "revision",
-                sortable: false,
-                class: "word-wrap-example"
-              },
-              {
-                text: "Title",
-                value: "title",
-                sortable: false,
-                class: "word-wrap-example"
-              },
-              {
-                text: "Maturity",
-                value: "maturity",
-                sortable: false,
-                class: "word-wrap-example"
-              },
-              {
-                text: "Description",
-                value: "description",
-                sortable: false,
-                class: "word-wrap-example"
-              },
-              {
-                text: "CA completed time",
-                value: "caCompletedTime",
-                sortable: false,
-                class: "word-wrap-example"
-              },
-              {
-                text: "CA Name",
-                value: "caName",
-                sortable: false,
-                class: "word-wrap-example"
-              },
-              {
-                text: "SAP Feedback Time Stamp",
-                value: "SapFeedbackTimeStamp",
-                sortable: false,
-                class: "word-wrap-example"
-              },
-              {
-                text: "SAP Feedback Message",
-                value: "SapFeedbackMessage",
-                sortable: false,
-                class: "word-wrap-example"
-              }
-            ],
-            headers: [
-              {
-                text: "Sr. No.",
-                value: "sno",
-                width: "92px",
-                sortable: true
-              },
-              {
-                text: "MA Name",
-                align: "start",
-                sortable: true,
-                // width: "200px",
-                sortable: false,
-                value: "maName"
-              },
-              // { text: "Status", value: "status", width: "200px" },
-              { text: "Revision", value: "revision", sortable: false },
-              { text: "Title", value: "title", sortable: false },
-              { text: "Maturity", value: "maturity", sortable: false },
-              { text: "Description", value: "description", sortable: false },
-              {
-                text: "CA completed time",
-                value: "caCompletedTime",
-                sortable: false
-              },
-              { text: "CA Name", value: "caName", sortable: false },
-              {
-                text: "SAP Feedback Time Stamp",
-                value: "SapFeedbackTimeStamp",
-                sortable: false
-              },
-              {
-                text: "SAP Feedback Message",
-                value: "SapFeedbackMessage",
-                sortable: false
-              }
-            ],
-            time: "",
-            date: ""
+          partData: [],
+          snackbarColor: "success",
+          arrObj: [],
+          failedStatus: false,
+          snackbar: false,
+          snackbarMsg: [],
+          type: 1,
+          // active: true,
+          BOMComponentName: "",
+          status: "",
+          revision: "",
+          title: "",
+          maturity: "",
+          description: "",
+          caCompletedTime: "",
+          caName: "",
+          SapFeedbackTimeStamp: "",
+          SapFeedbackMessage: "",
+          arrFilterData: [],
+          model: null,
+          singleSelect: false,
+          search: "",
+          globalSearch: "",
+          BOMComponentsReceivedFromWS: [],
+          selected: [],
+          headersForAllInOneTab: PLM_SAP_Integration_nls.headersForAllInOneTab,
+          headersForSeperateTab: PLM_SAP_Integration_nls.headersForSeperateTab,
+          time: "",
+          date: "",
         },
         computed: {
-          get(){
-            const a = this.selected.map((obj) => [obj.maName, obj.maID, obj.caID, obj.ConnectionID]);
-            this.maDetails = a;
-            console.log(a);
-          },
-          //checkbox method to enable only failed ones
-          onlyFailed() {
-            return this.filterData.map(x => ({
-              ...x,
-              isSelectable: x.status == "Failed"
+          // methodForGettingDataForRepush(){
+          //   const a = this.selected.map((obj) => [obj.BOMComponentName, obj.BOMComponentID, obj.caID, obj.ConnectionID]);
+          //   this.maDetails = a;
+          //   console.log(a);
+          // },
+          // checkbox method to enable only failed ones
+          // onlyFailed() {
+          // return this.SearchMethod.map(x => ({
+          //   ...x,
+          //   isSelectable: x.status == PLM_SAP_Integration_nls.failed
+          // }))
+          // },
+          methodToAddSrNoInAllTab() {
+            return this.SearchMethod.map((d, index) => ({
+              ...d,
+              sno: index + 1,
             }));
           },
-          itemsWithSno() {
-            return this.onlyFailed.map((d, index) => ({ ...d, sno: index + 1 }));
+          methodToAddSrNoInWaitingTable() {
+            return this.methodToGetWaitingTable.map((d, index) => ({
+              ...d,
+              sno: index + 1,
+            }));
           },
-          itemsWithSno1() {
-            return this.waitingTable.map((d, index) => ({ ...d, sno: index + 1 }));
+          methodToAddSrNoInInWorkTable() {
+            return this.methodToGetInWorkTable.map((d, index) => ({
+              ...d,
+              sno: index + 1,
+            }));
           },
-          itemsWithSno2() {
-            return this.inworkTable.map((d, index) => ({ ...d, sno: index + 1 }));
+          methodToAddSrNoInCompleteTable() {
+            return this.methodToGetSuccessTable.map((d, index) => ({
+              ...d,
+              sno: index + 1,
+            }));
           },
-          itemsWithSno3() {
-            return this.successTable.map((d, index) => ({ ...d, sno: index + 1 }));
+          methodToAddSrNoInFailedTable() {
+            return this.methodToGetFailedTable.map((d, index) => ({
+              ...d,
+              sno: index + 1,
+            }));
           },
-          itemsWithSno4() {
-            return this.failedTable.map((d, index) => ({ ...d, sno: index + 1 }));
-          },
-          filteredData() {
+          SearchMethod() {
             let conditions = [];
-            if (this.maName) {
+            if (this.BOMComponentName) {
               conditions.push(this.filtermaName);
             }
             if (this.status) {
@@ -1778,48 +1899,185 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               conditions.push(this.filterSapFeedbackMessage);
             }
             if (conditions.length > 0) {
-              return this.filterData.filter(name => {
-                return conditions.every(condition => {
+              return this.arrFilterData.filter((name) => {
+                return conditions.every((condition) => {
                   return condition(name);
                 });
               });
             }
-            return this.filterData;
+            return this.arrFilterData;
           },
-          successTable() {
-            return this.filteredData.filter(x => x.status == "Success");
+          methodToGetSuccessTable() {
+            return this.SearchMethod.filter(
+              (x) => x.status == PLM_SAP_Integration_nls.success
+            );
           },
-          failedTable() {
-            return this.filteredData.filter(x => x.status == "Failed");
+          methodToGetFailedTable() {
+            return this.SearchMethod.filter(
+              (x) => x.status == PLM_SAP_Integration_nls.failed
+            );
           },
-          waitingTable() {
-            return this.filteredData.filter(x => x.status == "Waiting");
+          methodToGetWaitingTable() {
+            return this.SearchMethod.filter(
+              (x) => x.status == PLM_SAP_Integration_nls.waiting
+            );
           },
-          inworkTable() {
-            return this.filteredData.filter(x => x.status == "In Work");
-          }
+          methodToGetInWorkTable() {
+            return this.SearchMethod.filter(
+              (x) => x.status == PLM_SAP_Integration_nls.inWork
+            );
+          },
         },
         methods: {
-          getColor(status) {
-            if (status === "Success") return "green lighten-1";
-            else if (status === "Failed") return "red lighten-1";
-            else if (status === "In Work") return "blue lighten-1";
-            else return "yellow lighten-1";
+          methodToDisableRepushBtnOnSelectAll(obj1) {
+            if (!obj1.value) {
+              this.arrObj = [];
+            }
+            if (
+              obj1.items.length ==
+              obj1.items.filter(
+                (x) => x.status == PLM_SAP_Integration_nls.failed
+              ).length
+            ) {
+              this.failedStatus = true;
+            } else {
+              this.failedStatus = false;
+            }
+          },
+          methodToDisableRepushBtnOnSelect(obj) {
+            if (this.selected.length == this.SearchMethod.length) {
+              this.arrObj = this.selected;
+            }
+            if (obj.value) {
+              this.arrObj.push(obj.item);
+            } else {
+              var index = this.arrObj.indexOf(obj.item);
+              this.arrObj.splice(index, 1);
+              // arrobj = arrobj.filter(item => item !== obj);
+            }
+            if (
+              this.arrObj.filter(
+                (x) => x.status !== PLM_SAP_Integration_nls.failed
+              ).length > 0
+            ) {
+              this.failedStatus = false;
+            } else if (
+              this.arrObj.filter(
+                (x) => x.status == PLM_SAP_Integration_nls.failed
+              ).length > 0
+            ) {
+              this.failedStatus = true;
+            } else {
+              this.failedStatus = false;
+            }
+          },
+          methodtodoCustomSortinTable: function (items, index, isDesc) {
+            items.sort((a, b) => {
+              if (index[0] == PLM_SAP_Integration_nls.caCompletedTime) {
+                if (!isDesc[0]) {
+                  return new Date(b[index]) - new Date(a[index]);
+                } else {
+                  return new Date(a[index]) - new Date(b[index]);
+                }
+              } else if (index[0] == PLM_SAP_Integration_nls.sno) {
+                if (!isDesc[0]) {
+                  return b[index] - a[index];
+                } else {
+                  return a[index] - b[index];
+                }
+              } else {
+                if (typeof a[index] != "undefined") {
+                  if (!isDesc[0]) {
+                    return a[index]
+                      .toLowerCase()
+                      .localeCompare(b[index].toLowerCase());
+                  } else {
+                    return b[index]
+                      .toLowerCase()
+                      .localeCompare(a[index].toLowerCase());
+                  }
+                }
+              }
+            });
+            return items;
+          },
+          download_csv_of_tabledata(csv, filename) {
+            var csvFile;
+            var downloadLink;
+
+            // CSV FILE
+            csvFile = new Blob([csv], { type: "text/csv" });
+
+            // Download link
+            downloadLink = document.createElement("a");
+
+            downloadLink.download = filename;
+
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+
+            downloadLink.style.display = "none";
+
+            document.body.appendChild(downloadLink);
+
+            downloadLink.click();
+          },
+          export_table_to_csv_method(html, filename) {
+            var _this = this;
+            var csv = [];
+            // var csv = this.selected;
+            var rows = document.querySelectorAll("table tr");
+
+            for (var i = 0; i < rows.length; i++) {
+              var row = [],
+                cols = rows[i].querySelectorAll("td, th");
+
+              for (var j = 1; j < cols.length; j++) row.push(cols[j].innerText);
+
+              csv.push(row.join(","));
+            }
+            // Download CSV
+            // _this.download_csv_of_tabledata(csv.join("\n"), filename);
+            _this.download_csv_of_tabledata(
+              csv.join("\n"),
+              "3DX-SAP Integration"
+            );
+          },
+          export_part_data() {
+            myWidget.webserviceToExportPartData();
+            // _this.download_csv_of_tabledata(this.partData.join("\n"), "Sub contract part");
+          },
+          getStatusColor(status) {
+            if (status === PLM_SAP_Integration_nls.success)
+              return "green lighten-1";
+            else if (status === PLM_SAP_Integration_nls.failed)
+              return "red lighten-1";
+            else if (status === PLM_SAP_Integration_nls.inWork)
+              return "blue lighten-1";
+            else if (status === PLM_SAP_Integration_nls.waiting)
+              return "yellow lighten-1";
           },
           filtermaName(item) {
-            return item.maName.toLowerCase().includes(this.maName.toLowerCase());
+            return item.BOMComponentName.toLowerCase().includes(
+              this.BOMComponentName.toLowerCase()
+            );
           },
           filterStatus(item) {
-            return item.status.toLowerCase().includes(this.status.toLowerCase());
+            return item.status
+              .toLowerCase()
+              .includes(this.status.toLowerCase());
           },
           filterRevision(item) {
-            return item.revision.toLowerCase().includes(this.revision.toLowerCase());
+            return item.revision
+              .toLowerCase()
+              .includes(this.revision.toLowerCase());
           },
           filterTitle(item) {
             return item.title.toLowerCase().includes(this.title.toLowerCase());
           },
           filterMaturity(item) {
-            return item.maturity.toLowerCase().includes(this.maturity.toLowerCase());
+            return item.maturity
+              .toLowerCase()
+              .includes(this.maturity.toLowerCase());
           },
           filterDescription(item) {
             return item.description
@@ -1832,7 +2090,9 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               .includes(this.caCompletedTime.toLowerCase());
           },
           filterCaName(item) {
-            return item.caName.toLowerCase().includes(this.caName.toLowerCase());
+            return item.caName
+              .toLowerCase()
+              .includes(this.caName.toLowerCase());
           },
           filterSapFeedbackTimeStamp(item) {
             return item.SapFeedbackTimeStamp.toLowerCase().includes(
@@ -1844,78 +2104,63 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               this.SapFeedbackMessage.toLowerCase()
             );
           },
-          rePush() {
-            debugger
-            myWidget.callWebservice2();
-
-            this.filteredData.map( x => {
-              this.selected.map( y =>{
-                if(x.maID == y.maID) {
-                  x.status = "In Work";
+          rePushToSAPMethod() {
+            this.SearchMethod.map((x) => {
+              this.selected.map((y) => {
+                if (x.BOMComponentID == y.BOMComponentID) {
+                  x.status = PLM_SAP_Integration_nls.inWork;
                 }
-              }
-              )
-            }
-            )
-            // this.filteredData.map(x => {
-            //   x.status = "In Work";
-              // this.filteredData.push(x);
-              // this.failedTable.map(x);
-              // const index = this.employees.indexOf(this.se[i]);
-              // this.failedTable.splice(x, 1);
-            // });
-            // for (var i = 0; i < this.selected.length; i++) {
-            //   const index = this.failedTable.indexOf(this.selected[i]);
-            //   this.failedTable.splice(index, 1);
-            // }
+              });
+            });
+            myWidget.webserviceForRepush();
           },
           clear() {
-
-            this.filterData = this.details;
+            this.arrFilterData = this.BOMComponentsReceivedFromWS;
           },
           searchTable() {
             if (this.globalSearch === "" || this.globalSearch === null) {
-              return this.filterData;
+              this.arrFilterData = this.BOMComponentsReceivedFromWS;
             } else {
-              return this.filterData = this.filterData.filter(data => {
-                return (
-                  data.maName
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.status
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.revision
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.title
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.maturity
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.description
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.caCompletedTime
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.caName
-                    .toLowerCase()
-                    .includes(this.globalSearch.toLowerCase()) ||
-                  data.SapFeedbackTimeStamp.toLowerCase().includes(
-                    this.globalSearch.toLowerCase()
-                  ) ||
-                  data.SapFeedbackMessage.toLowerCase().includes(
-                    this.globalSearch.toLowerCase()
-                  )
-                );
-              });
+              return (this.arrFilterData =
+                this.BOMComponentsReceivedFromWS.filter((data) => {
+                  return (
+                    data.BOMComponentName.toLowerCase().includes(
+                      this.globalSearch.toLowerCase()
+                    ) ||
+                    data.status
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.revision
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.title
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.maturity
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.description
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.caCompletedTime
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.caName
+                      .toLowerCase()
+                      .includes(this.globalSearch.toLowerCase()) ||
+                    data.SapFeedbackTimeStamp.toLowerCase().includes(
+                      this.globalSearch.toLowerCase()
+                    ) ||
+                    data.SapFeedbackMessage.toLowerCase().includes(
+                      this.globalSearch.toLowerCase()
+                    )
+                  );
+                }));
             }
-          }
+          },
         },
         mounted() {
-          // this.filterData = this.details;
+          // this.arrFilterData = this.BOMComponentsReceivedFromWS;
           // get a new date (locale machine date time)
           var date1 = new Date();
           const yyyy = date1.getFullYear();
@@ -1928,7 +2173,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           this.date = formattedToday;
           // get the time as a string
           this.time = date1.toLocaleTimeString();
-        }
+        },
       });
       myWidget.vueapp = vueapp;
     },
