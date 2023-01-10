@@ -1,4 +1,4 @@
-{
+{	
 	"webserviceURLToGetAllBOMComponents": "/LCDSAPIntegrationModeler/LCDSAPIntegrationService/getMA",
 	"webserviceURLForRepush": "/LCDSAPIntegrationModeler/LCDPushToSAPServices/PushToSAP",
 	"webserviceURLToExportPartData": "/LCDSAPIntegrationModeler/LCDSAPIntegrationExportCSVService/exportCSV"

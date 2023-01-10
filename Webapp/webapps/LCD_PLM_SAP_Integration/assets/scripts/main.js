@@ -23,7 +23,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       			break;
       		}
       	}
-        console.log(_3dspaceUrl);
+        // console.log("3DSPACE " +_3dspaceUrl);
       myWidget.webserviceToGetAllBOMComponents();
       myWidget.setVueTemplate();
       myWidget.loadData();
@@ -39,7 +39,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
     <v-container>
     <div class="snackbar_div">
       <v-snackbar v-model="snackbar" v-for="item in snackbarMsg" :key="item" :color="snackbarColor" top right :timeout="4000">
-        <p><v-icon>mdi-check-circle</v-icon>{{item}}</p>
+        <p><v-icon>{{snackbarIcon}}</v-icon>{{item}}</p>
         <template v-slot:action="{ attrs }">
         <v-btn
           text
@@ -127,7 +127,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                     >Search
                   </v-btn>
             </v-app-bar>
-            <v-container fluid style="height: 1500px; overflow: auto;">
+            <v-container fluid style="height: 1000px; overflow: auto;">
               <v-data-table
                 v-model="selected"
                 :headers="headersForSeperateTab"
@@ -429,7 +429,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                     Search
                   </v-btn>
             </v-app-bar>
-            <v-container fluid style="height: 1500px; overflow: auto;">
+            <v-container fluid style="height: 1000px; overflow: auto;">
               <v-data-table
                 v-model="selected"
                 :headers="headersForSeperateTab"
@@ -730,7 +730,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                     >Search
                   </v-btn>
             </v-app-bar>
-            <v-container fluid style="height: 1500px; overflow: auto;">
+            <v-container fluid style="height: 1000px; overflow: auto;">
               <v-data-table
                 v-model="selected"
                 :headers="headersForSeperateTab"
@@ -1041,7 +1041,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 </span>
               </v-tooltip>
             </v-app-bar>
-            <v-container fluid style="height: 1500px; overflow: auto;">
+            <v-container fluid style="height: 1000px; overflow: auto;">
               <v-data-table
                 v-model="selected"
                 :headers="headersForSeperateTab"
@@ -1352,7 +1352,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                   </v-btn>
              
             </v-app-bar>
-            <v-container fluid style="height: 1500px; overflow: auto;">
+            <v-container fluid style="height: 1000px; overflow: auto;">
               <v-data-table
                 display: block
                 v-model="selected"
@@ -1636,8 +1636,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
     },
     webserviceToGetAllBOMComponents: function () {
       var _this = this;
-      WAFData.authenticatedRequest(_3dspaceUrl + '/LCDSAPIntegrationModeler/LCDSAPIntegrationService/getMA',
-      // WAFData.authenticatedRequest(widget.getValue("webserviceURLToGetAllBOMComponents"),
+      // WAFData.authenticatedRequest(_3dspaceUrl + '/LCDSAPIntegrationModeler/LCDSAPIntegrationService/getMA',
+      WAFData.authenticatedRequest(_3dspaceUrl + widget.getValue("webserviceURLToGetAllBOMComponents"),
         {
           method: "GET",
           accept: "application/json",
@@ -1645,6 +1645,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             var data = JSON.parse(dataResp);
             _this.vueapp.BOMComponentsReceivedFromWS = data;
             _this.vueapp.arrFilterData = data;
+            
           },
           onFailure: function (error) {
             console.log(error);
@@ -1655,10 +1656,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
     webserviceForRepush: async function () {
       debugger;
       var _this = this;
-      // _this.vueapp.snackbarColor = "success";
-      // _this.vueapp.snackbar = true;
-      // _this.vueapp.snackbarMsg.push("SUCCESS!!");
-      // _this.vueapp.snackbarMsg.push("SUCCESS!! DARSHIT");
+    
       for (let i = 0; i < _this.vueapp.selected.length; i++) {
         var Ca_ID = _this.vueapp.selected[i].caID;
         var BOM_Comp_ID = _this.vueapp.selected[i].BOMComponentID;
@@ -1671,15 +1669,17 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           BOMName: ma_name,
         };
        await myWidget
-          .repush2(data_to_be_Send_from_UI)
+          .methodToCallRepushWS(data_to_be_Send_from_UI)
           .then(function () {
             //_this.vueapp.snackbarMsg = [myWidget.jsonResponse];
            _this.vueapp.snackbarMsg.push(myWidget.jsonResponse);
+          //  _this.vueapp.snackbarMsg.push(myWidget.jsonResponse[i]);
 
             // _this.vueapp.snackbarMsg.push(_this.vueapp.selected[i].BOMComponentName);
-            console.log("MYJSON -->" + myWidget.jsonResponse);
+            // console.log("MYJSON -->" + myWidget.jsonResponse);
             if (_this.vueapp.snackbarMsg[i].status == "Success") {
               _this.vueapp.snackbarColor = "success";
+              _this.vueapp.snackbarIcon = "mdi-check-circle";
               _this.vueapp.snackbar = true;
               _this.vueapp.SearchMethod.map((x) => {
                 _this.vueapp.selected.map((y) => {
@@ -1691,6 +1691,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               });
             } else if (_this.vueapp.snackbarMsg[i].status == "Failed") {
               _this.vueapp.snackbarColor = "error";
+              _this.vueapp.snackbarIcon = "mdi-close-circle";
               // _this.vueapp.snackbarMsg.push(returnData);
               _this.vueapp.snackbar = true;
               _this.vueapp.SearchMethod.map((x) => {
@@ -1705,10 +1706,11 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             }
           })
           .catch(function () {
-            alert("ERROR OCCURED!!!");
+            // alert("ERROR OCCURED!!!");
             _this.vueapp.snackbarColor = "error";
-            _this.vueapp.snackbarMsg.push("ERROR OCCURED!!!");
-            console.log(_this.vueapp.snackbarMsg);
+            _this.vueapp.snackbarIcon = "mdi-close-circle";
+            _this.vueapp.snackbarMsg.push("Something went wrong.");
+            // console.log(_this.vueapp.snackbarMsg);
             _this.vueapp.snackbar = true;
 
             _this.vueapp.SearchMethod.map((x) => {
@@ -1723,12 +1725,13 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           });
       }
       _this.vueapp.selected = [];
+      // _this.vueapp.snackbarMsg = [];
     },
-    repush2: function (data_to_be_Send_from_UI) {
+    methodToCallRepushWS: function (data_to_be_Send_from_UI) {
       return new Promise(function (resolve, reject) {
         try {
           WAFData.authenticatedRequest(
-            widget.getValue("webserviceURLForRepush"),
+            _3dspaceUrl + widget.getValue("webserviceURLForRepush"),
             {
               method: "POST",
               accept: "application/json",
@@ -1745,7 +1748,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 resolve();
               },
               onFailure: function (error) {
-                console.log( "--------> ERROR ON WEBSERVICE FAILURE :" +error);
+                console.log( "--------> ERROR ON WEBSERVICE FAILURE " +error);
                 reject();
               },
             }
@@ -1766,7 +1769,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         BOMComponentType: BOM_Comp_Type,
       };
       WAFData.authenticatedRequest(
-        widget.getValue("webserviceURLToExportPartData"),
+        _3dspaceUrl + widget.getValue("webserviceURLToExportPartData"),
         {
           method: "POST",
           accept: "application/json",
@@ -1795,10 +1798,11 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         data: {
           partData: [],
           snackbarColor: "success",
+          snackbarMsg: [],
+          snackbarIcon: "",
           arrObj: [],
           failedStatus: false,
           snackbar: false,
-          snackbarMsg: [],
           type: 1,
           // active: true,
           BOMComponentName: "",
