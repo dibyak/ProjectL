@@ -5,7 +5,11 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -24,6 +28,7 @@ import javax.ws.rs.core.Response;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
+import com.aspose.diagram.sc;
 import com.dassault_systemes.enovia.changeaction.impl.ChangeAction;
 import com.dassault_systemes.enovia.changeaction.servicesimpl.ChangeActionServices;
 import com.dassault_systemes.enovia.changeaction.webservice.services.ChangeActionJsonUtilities;
@@ -91,10 +96,10 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	public static final String KEY_CA_ID = "CAID";
 	public static final long TIME_CONVERSION = 86400000;
 	public static final long DAYS_IN_YEAR = 365;
+	public static final String MSG_NETWORK_FAILURE = "Network Failure";
 
 	private static String language;
-	private static String userName;
-	private static String password;
+
 	private static String url;
 	private static String xcsrfToken;
 	private static String cookie;
@@ -103,8 +108,12 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	private static CloseableHttpClient httpClient;
 	private static JsonObject changeActionJson;
 	private static String caReleasedDate;
+	private static boolean FALSE_EFFECTIVITY_STATUS;
+	private static boolean CONFIGURABLE_STATUS;
 	private static boolean subContractStatus;
 	private static String subContractRelId;
+	private static String CA_START_DATE;
+	private static List<String> LIST_REALIZED_CHANGES;
 
 	private static HashMap<String, JsonObjectBuilder> changeActionMap = new HashMap<>();
 
@@ -116,15 +125,20 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @throws Exception
 	 */
 	public void scheduledPushToSAP(Context context, String[] strArgs) throws Exception {
-		
-		
+
 		boolean isPresent = checkAncObjPresent(context);
-		if(isPresent) {
+		if (isPresent) {
 			MapList bomComponentsMapList = findRelevantObjectsConnectedToAnchorObject(context);
 			pushToSAP(context, bomComponentsMapList);
+		} else {
+			DomainObject domObjBomAncOcj = DomainObject.newInstance(context, TYPE_LCD_BOM_ANCHOR_OBJECT);
+			System.out.println("Anchor Object created." + domObjBomAncOcj);
+			domObjBomAncOcj.createObject(context, TYPE_LCD_BOM_ANCHOR_OBJECT, NAME_LCD_ANCHOR_OBJECT,
+					REV_LCD_ANCHOR_OBJECT, POLICY_LCD_3DX_SAP_INTEGRATION, VAULT_ESERVICE_PRODUCTION);
+			System.out.println("Anchor Object created -> " + domObjBomAncOcj);
 		}
 	}
-	
+
 	/**
 	 * This Method is check if Anchor Object is present.
 	 * 
@@ -134,18 +148,14 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 */
 	private boolean checkAncObjPresent(Context context) throws MatrixException {
 		boolean isPresent;
-		
-		BusinessObject busObjAchor = new BusinessObject(TYPE_LCD_BOM_ANCHOR_OBJECT,
-				NAME_LCD_ANCHOR_OBJECT,
-				REV_LCD_ANCHOR_OBJECT,
-				VAULT_ESERVICE_PRODUCTION);
-		
-		if(busObjAchor.exists(context)) {
+
+		BusinessObject busObjAchor = new BusinessObject(TYPE_LCD_BOM_ANCHOR_OBJECT, NAME_LCD_ANCHOR_OBJECT,
+				REV_LCD_ANCHOR_OBJECT, VAULT_ESERVICE_PRODUCTION);
+
+		if (busObjAchor.exists(context)) {
 			isPresent = true;
-		}else {
+		} else {
 			isPresent = false;
-			DomainObject domObjBomAncOcj = DomainObject.newInstance(context, TYPE_LCD_BOM_ANCHOR_OBJECT);
-			domObjBomAncOcj.createObject(context, TYPE_LCD_BOM_ANCHOR_OBJECT, NAME_LCD_ANCHOR_OBJECT, REV_LCD_ANCHOR_OBJECT, POLICY_LCD_3DX_SAP_INTEGRATION, VAULT_ESERVICE_PRODUCTION);		
 		}
 		return isPresent;
 	}
@@ -161,35 +171,45 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 
 		Iterator<?> iterMAsMaplist = bomComponentsMapList.iterator();
 		int intResponseCode = 0;
+		try {
+			loggerInitialization(context);
+            callGETService(context);
 
-		while (iterMAsMaplist.hasNext()) {
-			Map<?, ?> item = (Map<?, ?>) iterMAsMaplist.next();
-			String strConnectionId = (String) (item.get(DomainRelationship.SELECT_ID));
-			String strBOMComponentId = (String) (item.get(DomainConstants.SELECT_ID));
-			String strBOMComponentType = (String) (item.get(DomainConstants.SELECT_TYPE));
-			String strbomModified = (String) (item.get(ATTR_MODIFIED));
+			while (iterMAsMaplist.hasNext()) {
+				Map<?, ?> item = (Map<?, ?>) iterMAsMaplist.next();
+				String strConnectionId = (String) (item.get(DomainRelationship.SELECT_ID));
+				String strBOMComponentId = (String) (item.get(DomainConstants.SELECT_ID));
+				String strBOMComponentType = (String) (item.get(DomainConstants.SELECT_TYPE));
+				String strbomModified = (String) (item.get(ATTR_MODIFIED));
 
-			DomainRelationship domRelBOMComponents = DomainRelationship.newInstance(context, strConnectionId);
+				DomainRelationship domRelBOMComponents = DomainRelationship.newInstance(context, strConnectionId);
+				String strProcessStatusFlag = domRelBOMComponents.getAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG);
+				String strCAID = domRelBOMComponents.getAttributeValue(context, ATTR_LCD_CAID);
 
-			String strProcessStatusFlag = domRelBOMComponents.getAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG);
-			String strCAID = domRelBOMComponents.getAttributeValue(context, ATTR_LCD_CAID);
+				if (strProcessStatusFlag.equalsIgnoreCase(STATUS_WAITING)) {
+					if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strBOMComponentType)) {
+						intResponseCode = sendManAssToSAP(context, strBOMComponentId, strBOMComponentType, strCAID);
+						processWebServiceResponseForManufacturingAssembly(context, intResponseCode, strConnectionId);
 
-			if (strProcessStatusFlag.equalsIgnoreCase(STATUS_WAITING)) {
-				if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strBOMComponentType)) {
-					intResponseCode = sendToSAP(context, strBOMComponentId, strBOMComponentType, strCAID);
-					processWebServiceResponseForManufacturingAssembly(context, intResponseCode, strConnectionId);
-
-				} else {
-					Map<?, ?> mLinkedCadPart = getLinkedCADPartFromMBOMPart(context, strBOMComponentId, REL_PROVIDE);
-					String strProcurementIntent = (String) mLinkedCadPart.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
-					if (SUBCONTRACT.equalsIgnoreCase(strProcurementIntent)) {
-						intResponseCode = processSubContractPart(context, mLinkedCadPart, strConnectionId);
-						processWebServiceResponseForSubContract(context, intResponseCode, strConnectionId);
+					} else {
+						if (UIUtil.isNotNullAndNotEmpty(strBOMComponentId))
+						{
+							Map<?, ?> mCadPartDetails = getCADPartDetails(context, strBOMComponentId);
+							String strProcurementIntent = (String) mCadPartDetails.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
+							if (SUBCONTRACT.equalsIgnoreCase(strProcurementIntent)) {
+								intResponseCode = processSubContractPart(context, mCadPartDetails, strConnectionId);
+								processWebServiceResponseForSubContract(context, intResponseCode, strConnectionId);
+							}
+						}
 					}
+				} else if (strProcessStatusFlag.equalsIgnoreCase(STATUS_COMPLETE)) {
+					disconnectExpiredObjectsFromAnchorObject(context, strConnectionId, strbomModified);
 				}
-			} else if (strProcessStatusFlag.equalsIgnoreCase(STATUS_COMPLETE)) {
-				disconnectExpiredObjectsFromAnchorObject(context, strConnectionId, strbomModified);
 			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			httpClient.close();
 		}
 	}
 
@@ -239,40 +259,51 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @param args
 	 * @throws Exception
 	 */
-
 	public String rePushFailedBomComponentsToSAP(Context context, String[] args) throws Exception {
 
 		HashMap<?, ?> programMap = (HashMap<?, ?>) JPO.unpackArgs(args);
-		HashMap<String, String> responseMap = new HashMap<>();
 		int intResponseCode = 0;
 		String strResponse = "";
+		try {
+			loggerInitialization(context);
 
-		// STEP : Retrieving Input Arguments
-		String strConnectionId = (String) programMap.get(KEY_CONNECTION_ID);
-		String strBOMComponentId = (String) programMap.get(KEY_BOM_COMPONENT_ID);
-		String strCAID = (String) programMap.get(KEY_CA_ID);
+			intResponseCode = callGETService(context);
 
-		DomainObject domObj = DomainObject.newInstance(context, strBOMComponentId);
+			if (intResponseCode == HttpStatus.SC_OK) {
+				String strConnectionId = (String) programMap.get(KEY_CONNECTION_ID);
+				String strBOMComponentId = (String) programMap.get(KEY_BOM_COMPONENT_ID);
+				String strCAID = (String) programMap.get(KEY_CA_ID);
 
-		StringList slObjectSelect = new StringList();
-		slObjectSelect.add(DomainConstants.SELECT_TYPE);
+				DomainObject domObj = DomainObject.newInstance(context, strBOMComponentId);
+				StringList slObjectSelect = new StringList();
+				slObjectSelect.add(DomainConstants.SELECT_TYPE);
 
-		Map<?, ?> bomMap = domObj.getInfo(context, slObjectSelect);
+				Map<?, ?> bomMap = domObj.getInfo(context, slObjectSelect);
+				String strBOMComponentType = (String) bomMap.get(DomainConstants.SELECT_TYPE);
 
-		String strBOMComponentType = (String) bomMap.get(DomainConstants.SELECT_TYPE);
-
-		if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strBOMComponentType)) {
-			intResponseCode = sendToSAP(context, strBOMComponentId, strBOMComponentType, strCAID);
-			System.out.println("RePushFailedBomComponentsToSAP strResponseString ------> " + intResponseCode);
-		} else {
-			Map<?, ?> mLinkedCadPart = getLinkedCADPartFromMBOMPart(context, strBOMComponentId, REL_PROVIDE);
-			String strProcurementIntent = (String) mLinkedCadPart.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
-			if (SUBCONTRACT.equalsIgnoreCase(strProcurementIntent)) {
-				intResponseCode = processSubContractPart(context, mLinkedCadPart, strConnectionId);
+				if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strBOMComponentType)) {
+					intResponseCode = sendManAssToSAP(context, strBOMComponentId, strBOMComponentType, strCAID);
+					strResponse = strResponse.valueOf(intResponseCode);
+				} else {
+					
+					if (UIUtil.isNotNullAndNotEmpty(strBOMComponentId))
+					{
+						Map<?, ?> mCadPartDetails = getCADPartDetails(context, strBOMComponentId);
+						String strProcurementIntent = (String) mCadPartDetails.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
+						if (SUBCONTRACT.equalsIgnoreCase(strProcurementIntent)) {
+							intResponseCode = processSubContractPart(context, mCadPartDetails, strConnectionId);
+							strResponse = strResponse.valueOf(intResponseCode);
+						}
+					}
+				}
+			} else {
+				strResponse = MSG_NETWORK_FAILURE;
 			}
+			// STEP : Retrieving Input Arguments
+		}catch (Exception e) {
+			e.printStackTrace();
 		}
-		logger.writeLog("response from SAP for Re-Push faild components >>>> " + responseMap);
-		return strResponse.valueOf(intResponseCode);
+		return strResponse;
 	}
 
 	/**
@@ -298,26 +329,14 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 		}
 	}
 
-	private int sendToSAP(Context context, String strBOMComponentId, String strBOMComponentType, String caId) throws Exception {
+	private int sendManAssToSAP(Context context, String strBOMComponentId, String strBOMComponentType, String caId)
+			throws Exception {
 
 		String strRequestString = null;
 		int intResponseCode = 0;
-		String strResponseString = "";
+
 		try {
-			System.out.println("sendToSAP calledd <<<<<<<<< ");
-
-			language = context.getSession().getLanguage();
-
-			userName = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
-					"LCD_3DXSAPStringResource_en.SAP.UserName", language);
-
-			password = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
-					"LCD_3DXSAPStringResource_en.SAP.Password", language);
-
-			url = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
-					"LCD_3DXSAPStringResource_en.SAP.WebServiceURL.DEV", language);
-
-			httpClient = HttpClients.createDefault();
+			logger.writeLog("sendToSAP calledd <<<<<<<<< ");
 
 			// STEP :Get input Arguments
 			ChangeAction changeAction = ChangeActionServices.getChangeAction(context, caId);
@@ -326,8 +345,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				ChangeActionFacets changeActionFacets = new ChangeActionFacets();
 				changeActionFacets.attributes = true;
 				changeActionFacets.realized = true;
-				String changeActionJsonDetails = ChangeActionJsonUtilities.changeActionToJson(context, changeAction,
-						changeActionFacets);
+				changeActionFacets.applicability = true;
+				String changeActionJsonDetails = ChangeActionJsonUtilities.changeActionToJson(context, changeAction,changeActionFacets);
 
 				if (UIUtil.isNotNullAndNotEmpty(changeActionJsonDetails)) {
 					JsonReader jsonReader = Json.createReader(new StringReader(changeActionJsonDetails));
@@ -338,19 +357,15 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 						// STEP :Set method to Populate the JSON Object of Change Action [output of
 						// service API]
 						setChangeActionJson(joChangeAction);
-						// STEP :Log Initialization
-						loggerInitialization(context);
+
 
 						// Step : Retrieving Change Action Name from JSON Object of Change Action
 						// [output of service API]
 						String changeActionName = getChangeActionJson().getJsonObject("changeaction").getString("name");
 
-						// STEP : Invoking SAP Web service using GET request method to get the
-						// x-csrf-token and cookies
-						String strResponseStatusLine = callGETService(context);
+						// STEP : Invoking SAP Web service using GET request method to get the x-csrf-token and cookies
 						if (UIUtil.isNotNullAndNotEmpty(xcsrfToken) && UIUtil.isNotNullAndNotEmpty(cookie)) {
 							// STEP : Adding Change Action Header in JSON
-//							JsonObjectBuilder jEachPayloadBuilder = addChangeActionHeader(context);
 
 							JsonObjectBuilder jEachPayloadBuilder = Json.createObjectBuilder();
 
@@ -364,15 +379,18 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 							if (null != jEachPayloadBuilder) {
 
 								// STEP : Traversing Change Action to get the realized items
+								JsonObject realizedItem;
+								JsonArray realizedItems = getChangeActionJson().getJsonObject("changeaction").getJsonArray("realized");
 								String strObjProcIntent;
 								String strHasConfig;
 								String strObjTitle;
 								String strSAPMBOMUpdatedOn;
 								String strSAPUniqueID;
 								DomainObject domRealizedItemObj;
-								Map<?, ?> mobjectDetails;
+								Map<?, ?> mobjectDetails = null;
 								JsonObjectBuilder jHeaderPartObjectBuilder;
 								JsonObject jEachPayloadObj;
+								String realizedItemid;
 
 								if (UIUtil.isNotNullAndNotEmpty(strBOMComponentId)) {
 									// STEP : Retrieving realized item's object details
@@ -392,64 +410,51 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 									objectSelects.add(ATTR__SAPUNIQUEID_MANUFACTURINGASSEMBLY);
 
 									mobjectDetails = domRealizedItemObj.getInfo(context, objectSelects);
-									strObjProcIntent = (String) mobjectDetails
-											.get(ATTR__PROCUREMENTINTENT_MANUFACTURINGASSEMBLY);
+									realizedItemid = (String) mobjectDetails.get(DomainConstants.SELECT_ID);
+									strObjProcIntent = (String) mobjectDetails.get(ATTR__PROCUREMENTINTENT_MANUFACTURINGASSEMBLY);
 									strHasConfig = (String) mobjectDetails.get(ATTR__HASCONFIGCONTEXT_VPMREFERENCE);
 									strObjTitle = (String) mobjectDetails.get(ATTR_V_NAME);
-//									strBOMComponentType = (String) mobjectDetails.get(DomainConstants.SELECT_TYPE);
 
 									// STEP : Check the realized item is Discrete Make Manufacturing Assembly
-									if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strBOMComponentType)
-											&& DESCRETE.equalsIgnoreCase(strObjProcIntent)
-											&& FALSE.equalsIgnoreCase(strHasConfig)) {
-										strSAPMBOMUpdatedOn = (String) mobjectDetails
-												.get(ATTR__SAPMBOMUPDATEDON_MANUFACTURINGASSEMBLY);
-										strSAPUniqueID = (String) mobjectDetails
-												.get(ATTR__SAPUNIQUEID_MANUFACTURINGASSEMBLY);
+									if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strBOMComponentType)){
+										if(FALSE.equalsIgnoreCase(strHasConfig)){
+											logger.writeLog("INFO ::Realized Item << " + strObjTitle + " >> is with Procurement Intent : << " + strObjProcIntent + " >> ");
+											setConfiguredFlag(false);
+										}
+										else if(TRUE.equalsIgnoreCase(strHasConfig)){
+											logger.writeLog("INFO ::configured Realized Item is << " + strObjTitle + " >> is with Procurement Intent : << " + strObjProcIntent + " >> ");
+											setConfiguredFlag(true);
+											realizedItem = realizedItemJson(context, realizedItems, strBOMComponentId);
+											setCAStartDate();
+											if(null != realizedItem) {
+												setRealizedItemList(context ,realizedItem);
+											}
+										}
 
-										// STEP : Added to handle Re push only Failed and new discrete M11
-										if (UIUtil.isNullOrEmpty(strSAPMBOMUpdatedOn)
-												&& UIUtil.isNullOrEmpty(strSAPUniqueID)) {
-											// Mark SubContract Failed Flag False at start of each Make Assembly
-											setSubContractFailedFlag(false);
+										// STEP : Adding Manufacturing Assembly Header in JSON
+										logger.writeLog("Processing Realized Item << " + strObjTitle + " >> Procurement Intent : << " + strObjProcIntent + " >> ");
+										jHeaderPartObjectBuilder = addRealizedItemHeader(context, mobjectDetails);
+										if (null != jHeaderPartObjectBuilder) 
+										{
+											jEachPayloadBuilder.add(HEADER_PART, jHeaderPartObjectBuilder.build());
 
-											// STEP : Adding Manufacturing Assembly Header in JSON
-											logger.writeLog("Processing Realized Item << " + strObjTitle
-													+ " >> Procurement Intent : << " + strObjProcIntent + " >> ");
-											jHeaderPartObjectBuilder = addRealizedItemHeader(context, mobjectDetails);
-											if (null != jHeaderPartObjectBuilder) {
-												jEachPayloadBuilder.add(HEADER_PART, jHeaderPartObjectBuilder.build());
+											// STEP : Invoking SAP WebService by attaching JSON
+											jEachPayloadObj = jEachPayloadBuilder.build();
+											strRequestString = jEachPayloadObj.toString();
+											jsonLogger.writeLog("JSON Payload Request for : <<< " + strObjTitle + " : >>> \n " + strRequestString + " \n ");
+											logger.writeLog("JSON Payload Request for  : <<< " + strObjTitle + " : >>> \n " + strRequestString + " \n ");
 
-												// STEP : Invoking SAP WebService by attaching JSON
-												jEachPayloadObj = jEachPayloadBuilder.build();
-												strRequestString = jEachPayloadObj.toString();
-												jsonLogger.writeLog("JSON Payload Request for Discrete : <<< "
-														+ strObjTitle + " : >>> \n " + strRequestString + " \n ");
-												logger.writeLog("JSON Payload Request for Discrete : <<< " + strObjTitle
-														+ " : >>> \n " + strRequestString + " \n ");
-
-												if (UIUtil.isNotNullAndNotEmpty(jEachPayloadObj.toString())) {
-													intResponseCode = callPostService(context, jEachPayloadObj);
-
-													jsonLogger.writeLog("Response for Discrete : <<< " + strObjTitle
-															+ " :  Payload from SAP WebService >>> \n "
-															+ intResponseCode + " \n ");
-
-												} else
-													logger.writeLog(
-															"ERROR :: Failed to generate JSON Payload for realized item  : << "
-																	+ strObjTitle + ">> header for Change Action : << "
-																	+ changeActionName);
+											if (UIUtil.isNotNullAndNotEmpty(jEachPayloadObj.toString())) {
+												intResponseCode = callPostService(context, jEachPayloadObj);
+												jsonLogger.writeLog("Response for  : <<< " + strObjTitle+ " :  Payload from SAP WebService >>> \n "+ intResponseCode + " \n ");
 
 											} else
-												logger.writeLog("ERROR :: Failed to add realized item  : << "
-														+ strObjTitle + ">> header for Change Action : << "
-														+ changeActionName);
+												logger.writeLog("ERROR :: Failed to generate JSON Payload for realized item  : << "+ strObjTitle + ">> header for Change Action : << "+ changeActionName);
+
 										} else
-											logger.writeLog("INFO ::Realized Item << " + strObjTitle
-													+ " >> is with Procurement Intent : << " + strObjProcIntent
-													+ " >> is already processed from Change Action : << "
-													+ changeActionName + " >> ");
+											logger.writeLog("ERROR :: Failed to add realized item  : << "
+													+ strObjTitle + ">> header for Change Action : << "
+													+ changeActionName);
 									} else
 										logger.writeLog("INFO ::Realized Item << " + strObjTitle
 												+ " >> is with Procurement Intent : << " + strObjProcIntent + " >> ");
@@ -461,10 +466,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 										"ERROR : Failed to add change action header in JSON Object from Change Action : << "
 												+ changeActionName + " >> ");
 						} else {
+							intResponseCode = 500;
 							logger.writeLog("ERROR : Failed to get x-csrf-token and cookies from SAP Webservice ");
-							// add history on M11 with Status Line
-							if (UIUtil.isNotNullAndNotEmpty(strResponseStatusLine))
-								LogWebServiceConnectionErrorOnHeader(context, strResponseStatusLine);
 						}
 					} else
 						logger.writeLog("ERROR : Failed to get change action JSON object using Service API");
@@ -472,15 +475,30 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 					logger.writeLog("ERROR : Failed to get change action JSON using Service API");
 			} else
 				logger.writeLog("ERROR : Failed to input arguments");
-		} catch (
-
-		Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
-		} finally {
-			httpClient.close();
-		}
-
+		} 
 		return intResponseCode;
+	}
+
+	private JsonObject realizedItemJson(Context context, JsonArray realizedItems, String strBOMComponentId)
+			throws FrameworkException {
+		JsonObject joRealizedItem = null;
+		for (int i = 0; i < realizedItems.size(); i++) {
+			JsonObject joItem = realizedItems.getJsonObject(i);
+			String realizedItemPhyId = joItem.getJsonObject("where").get("id").toString().split(":")[1].replace("\"", "");
+
+			DomainObject domRealizedItemObj = DomainObject.newInstance(context, realizedItemPhyId);
+			StringList objectSelects = new StringList();
+			objectSelects.add(DomainConstants.SELECT_ID);
+
+			Map mobjectDetails = domRealizedItemObj.getInfo(context, objectSelects);
+			String realizedItemBusID = (String) mobjectDetails.get(DomainConstants.SELECT_ID);
+			if (realizedItemBusID.equals(strBOMComponentId)) {
+				joRealizedItem = joItem;
+			}
+		}
+		return joRealizedItem;
 	}
 
 	/**
@@ -499,7 +517,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 		JsonObjectBuilder jEachPayloadBuilder = Json.createObjectBuilder();
 		try {
 
-			if (caId.equals(null) || caId.equals("")) {
+			if (UIUtil.isNullOrEmpty(caId)) {
 				// STEP : Adding Change Action object details in JSONObjectBuilder
 
 				jEachPayloadBuilder.add(TAG_TITLE, NOT_APPLICABLE);
@@ -522,81 +540,94 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			} else {
 
 				// STEP : Retrieving Change Action Details from Input Change Action JSON
-
-				DomainObject domObjChangeAction = DomainObject.newInstance(context, caId);
-
-				StringList slObjectSelect = new StringList();
-				slObjectSelect.add(DomainConstants.SELECT_NAME);
-				slObjectSelect.add(DomainConstants.ATTRIBUTE_DESCRIPTION);
-				slObjectSelect.add(TITLE_CHANGEACTION);
-				slObjectSelect.add(CATEGORYOFCHANGE_CHANGEACTION);
-				slObjectSelect.add(CHANGEDOMAIN_CHANGEACTION);
-				slObjectSelect.add(PLATFORM_CHANGEACTION);
-				slObjectSelect.add(CHANGETYPE_CHANGEACTION);
-				slObjectSelect.add(REASONFORCHANGE_CHANGEACTION);
-				slObjectSelect.add(RELEASEDDATE_CHANGEACTION);
-				// get CA Aplicabilty
-				Map<?, ?> changeActionAttrDetails = domObjChangeAction.getInfo(context, slObjectSelect);
+				String changeActionName = null;
+				String changeObjPhyId = null;
+				String changeActionDescription = null;
+				JsonObject changeActionObject = getChangeActionJson().getJsonObject("changeaction");
+				Map<String, String> mcaDetails = new HashMap<>();
+				if (null != changeActionObject) {
+					changeActionName = changeActionObject.getString("name");
+					changeObjPhyId = changeActionObject.getString("id").toString().split(":")[1].replaceAll("\"", "");
+					changeActionDescription = changeActionObject.getString("description");
+					logger.writeLog("Change Action Name  << " + changeActionName + " >> Change Action Description : << " + changeActionDescription + " >>");
+				}
 
 				// STEP : Retrieving Change Action Details from Input Change Action JSON
-				caReleasedDate = (String) changeActionAttrDetails.get(RELEASEDDATE_CHANGEACTION);
-				if (UIUtil.isNotNullAndNotEmpty(caReleasedDate)) {
-					caReleasedDate = caReleasedDate.substring(0, caReleasedDate.length() - 11);
-					if (UIUtil.isNotNullAndNotEmpty(caReleasedDate)) {
+				JsonArray caAttributes = changeActionObject.getJsonArray("attributes");
+				String attrName;
+				String attrValue;
+				JsonObject caAttribute;
+				if (caAttributes != null) {
+					for (int i = 0; i < caAttributes.size(); i++) {
+						caAttribute = caAttributes.getJsonObject(i);
+						attrName = caAttribute.getString("name");
+						if (TITLE_CHANGEACTION.equalsIgnoreCase(attrName) || CHANGETYPE_CHANGEACTION.equalsIgnoreCase(attrName) || CHANGEDOMAIN_CHANGEACTION.equalsIgnoreCase(attrName)
+								|| PLATFORM_CHANGEACTION.equalsIgnoreCase(attrName) || REASONFORCHANGE_CHANGEACTION.equalsIgnoreCase(attrName) || CATEGORYOFCHANGE_CHANGEACTION.equalsIgnoreCase(attrName)
+								|| RELEASEDDATE_CHANGEACTION.equalsIgnoreCase(attrName))  {
+							attrValue = caAttribute.getString("value");
+							if (UIUtil.isNotNullAndNotEmpty(attrValue))
+								mcaDetails.put(attrName, attrValue);
+							else
+								mcaDetails.put(attrName, " ");
+						}
+					}
+				}
+				String strCACompletionDate = mcaDetails.get(RELEASEDDATE_CHANGEACTION);
+				if (UIUtil.isNotNullAndNotEmpty(strCACompletionDate)) {
+					strCACompletionDate = strCACompletionDate.substring(0, strCACompletionDate.length() - 11);
+					if (UIUtil.isNotNullAndNotEmpty(strCACompletionDate)) {
 						SimpleDateFormat format1 = new SimpleDateFormat("MM/dd/yyyy");
 						SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
-						Date date = format1.parse(caReleasedDate);
+						Date date = format1.parse(strCACompletionDate);
 						String formatDate = format2.format(date);
 						setCACompletionDate(formatDate);
 					}
 				}
 
-				// STEP : Adding Change Action object details in JSONObjectBuilder
-				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(TITLE_CHANGEACTION)))
-					jEachPayloadBuilder.add(TAG_TITLE, (String) changeActionAttrDetails.get(TITLE_CHANGEACTION));
+				// STEP : Retrieving Change Action object ID from Change Action Physical ID
+				String changeActionObjId = null;
+				if (UIUtil.isNotNullAndNotEmpty(changeObjPhyId)) {
+					DomainObject domCAObj = DomainObject.newInstance(context, changeObjPhyId);
+					changeActionObjId = domCAObj.getInfo(context, DomainConstants.SELECT_ID);
+				}
 
-				if (UIUtil.isNotNullAndNotEmpty(caId))
-					jEachPayloadBuilder.add(TAG_OID, caId);
+				// STEP : Adding Change Action object details in JSONObjectBuilder
+				if (UIUtil.isNotNullAndNotEmpty(mcaDetails.get(TITLE_CHANGEACTION)))
+					jEachPayloadBuilder.add(TAG_TITLE, mcaDetails.get(TITLE_CHANGEACTION));
+
+				if (UIUtil.isNotNullAndNotEmpty(changeActionObjId))
+					jEachPayloadBuilder.add(TAG_OID, changeActionObjId);
 				else
 					jEachPayloadBuilder.add(TAG_OID, " ");
 
-				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(DomainConstants.SELECT_NAME)))
-					jEachPayloadBuilder.add(TAG_NAME,
-							(String) changeActionAttrDetails.get(DomainConstants.SELECT_NAME));
+				if (UIUtil.isNotNullAndNotEmpty(changeActionName))
+					jEachPayloadBuilder.add(TAG_NAME, changeActionName);
 				else
 					jEachPayloadBuilder.add(TAG_NAME, " ");
 
-				if (UIUtil.isNotNullAndNotEmpty(
-						(String) changeActionAttrDetails.get(DomainConstants.ATTRIBUTE_DESCRIPTION)))
-					jEachPayloadBuilder.add(TAG_DESCRIPTION,
-							(String) changeActionAttrDetails.get(DomainConstants.ATTRIBUTE_DESCRIPTION));
+				if (UIUtil.isNotNullAndNotEmpty(changeActionDescription))
+					jEachPayloadBuilder.add(TAG_DESCRIPTION, changeActionDescription);
 				else
 					jEachPayloadBuilder.add(TAG_DESCRIPTION, " ");
 
-				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(CATEGORYOFCHANGE_CHANGEACTION)))
-					jEachPayloadBuilder.add(TAG_CATEGORY_OF_CHANGE,
-							(String) changeActionAttrDetails.get(CATEGORYOFCHANGE_CHANGEACTION));
+				if (UIUtil.isNotNullAndNotEmpty(mcaDetails.get(CATEGORYOFCHANGE_CHANGEACTION)))
+					jEachPayloadBuilder.add(TAG_CATEGORY_OF_CHANGE, mcaDetails.get(CATEGORYOFCHANGE_CHANGEACTION));
 
-				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(CHANGEDOMAIN_CHANGEACTION)))
-					jEachPayloadBuilder.add(TAG_CHANGEDOMAIN,
-							(String) changeActionAttrDetails.get(CHANGEDOMAIN_CHANGEACTION));
+				if (UIUtil.isNotNullAndNotEmpty(mcaDetails.get(CHANGEDOMAIN_CHANGEACTION)))
+					jEachPayloadBuilder.add(TAG_CHANGEDOMAIN, mcaDetails.get(CHANGEDOMAIN_CHANGEACTION));
 
-				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(CHANGETYPE_CHANGEACTION)))
-					jEachPayloadBuilder.add(TAG_CHANGETYPE,
-							(String) changeActionAttrDetails.get(CHANGETYPE_CHANGEACTION));
+				if (UIUtil.isNotNullAndNotEmpty(mcaDetails.get(CHANGETYPE_CHANGEACTION)))
+					jEachPayloadBuilder.add(TAG_CHANGETYPE, mcaDetails.get(CHANGETYPE_CHANGEACTION));
 
-				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(REASONFORCHANGE_CHANGEACTION)))
-					jEachPayloadBuilder.add(TAG_REASONFORCHANGE,
-							(String) changeActionAttrDetails.get(REASONFORCHANGE_CHANGEACTION));
+				if (UIUtil.isNotNullAndNotEmpty(mcaDetails.get(REASONFORCHANGE_CHANGEACTION)))
+					jEachPayloadBuilder.add(TAG_REASONFORCHANGE, mcaDetails.get(REASONFORCHANGE_CHANGEACTION));
 
-				if (UIUtil.isNotNullAndNotEmpty((String) changeActionAttrDetails.get(PLATFORM_CHANGEACTION)))
-					jEachPayloadBuilder.add(TAG_PLATFORM,
-							(changeActionAttrDetails.get(PLATFORM_CHANGEACTION)).toString());
+				if (UIUtil.isNotNullAndNotEmpty(mcaDetails.get(PLATFORM_CHANGEACTION)))
+					jEachPayloadBuilder.add(TAG_PLATFORM, mcaDetails.get(PLATFORM_CHANGEACTION));
+
+				logger.writeLog("Change Action Header :: << " + jEachPayloadBuilder.build().toString() + ">>");
+
 			}
-
-			logger.writeLog("Change Action Header :: << " + jEachPayloadBuilder.build().toString() + ">>");
-			// Set Change Action Header in JSON
-//			setChangeActionHeader(jEachPayloadBuilder);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -628,8 +659,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			String strName = (String) mobjectDetails.get(DomainConstants.SELECT_NAME);
 			String strObjPlantCode = (String) mobjectDetails.get(ATTR__PLANTCODE_MANUFACTURINGASSEMBLY);
 			String strObjServiceable = (String) mobjectDetails.get(ATTR__SERVICEABLEITEM_MANUFACTURINGASSEMBLY);
-			String strObjPartInterchangeability = (String) mobjectDetails
-					.get(ATTR__PARTINTERCHANGEABILITY_MANUFACTURINGASSEMBLY);
+			String strObjPartInterchangeability = (String) mobjectDetails.get(ATTR__PARTINTERCHANGEABILITY_MANUFACTURINGASSEMBLY);
 
 			// STEP :Adding realized item object details in JSONObjectBuilder
 			if (UIUtil.isNotNullAndNotEmpty(strObjTitle))
@@ -665,7 +695,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				jHeaderPartObjectBuilder.add(TAG_SERVICEABLEITEM, " ");
 
 			if (UIUtil.isNotNullAndNotEmpty(strObjPlantCode))
-				jHeaderPartObjectBuilder.add(TAG_PLANTCODE, strObjPlantCode + "5");
+				jHeaderPartObjectBuilder.add(TAG_PLANTCODE, strObjPlantCode);
 			else
 				jHeaderPartObjectBuilder.add(TAG_PLANTCODE, " ");
 
@@ -674,7 +704,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			else
 				jHeaderPartObjectBuilder.add(TAG_PARTINTERCHANGEABILITY, " ");
 
-			jHeaderPartObjectBuilder.add(TAG_VARIAENT_EFFECTIVITY, NOT_APPLICABLE);
+			jHeaderPartObjectBuilder.add(TAG_VARIAENT_Effectivity, NOT_APPLICABLE);
 			jHeaderPartObjectBuilder.add(TAG_DATEFROM, NOT_APPLICABLE);
 			jHeaderPartObjectBuilder.add(TAG_DATETO, NOT_APPLICABLE);
 			jHeaderPartObjectBuilder.add(TAG_REALIZED_DATA, true);
@@ -722,8 +752,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 
 				JsonObjectBuilder jMBOMPartBuilder = Json.createObjectBuilder();
 				if (sType.equalsIgnoreCase(TYPE_MANUFACTURINGASSEMBLY)) {
-					// STEP : Adding Manufacturing Assembly child of Manufacturing Assembly Header
-					// in JSON
+					// STEP : Adding Manufacturing Assembly child of Manufacturing Assembly Header in JSON
 					isAssembly = true;
 					addChildPartHeader(context, mPartDetails, jMBOMPartBuilder, isAssembly);
 				} else {
@@ -733,8 +762,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				}
 				// STEP : adding child part JSON Object in JSON Array
 				if (null != jMBOMPartBuilder) {
-					logger.writeLog("JSON Header for child :: << " + strTitle + ">> <<"
-							+ jMBOMPartBuilder.build().toString() + ">>>>>>>>>");
+					logger.writeLog("JSON Header for child :: << " + strTitle + ">> <<"+ jMBOMPartBuilder.build().toString() + ">>>>>>>>>");
 					jsonMBOMPartArrayBuilder.add(jMBOMPartBuilder.build());
 				}
 			}
@@ -785,6 +813,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			// STEP : Defining Relationship Selectables
 			StringList relSelects = new StringList();
 			relSelects.add(DomainConstants.SELECT_RELATIONSHIP_ID);
+			relSelects.add(ATTR__HASCONFIGEFFECTIVITY);
 			DomainObject partDomObj = DomainObject.newInstance(context, strObjectId);
 
 			// STEP : Expanding the input object to get all its child
@@ -825,19 +854,23 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			String strPartInterchangeability = null;
 			String strServiceable = null;
 			String strUnitOfMeasure = null;
+			String strLinkedVPMReferenceId = null;
 			String strObjectID = (String) mPartDetails.get(DomainConstants.SELECT_ID);
 			String sName = (String) mPartDetails.get(DomainConstants.SELECT_NAME);
 			String strTitle = (String) mPartDetails.get(ATTR_V_NAME);
 			String strdescription = (String) mPartDetails.get(ATTR_V_DESCRIPTION);
 			String strRelId = (String) mPartDetails.get(DomainConstants.SELECT_RELATIONSHIP_ID);
 
+			String strRelPhyId = (String) mPartDetails.get(DomainConstants.SELECT_PHYSICAL_ID);
+			String strhasConfigEffectivity = (String) mPartDetails.get(ATTR__HASCONFIGEFFECTIVITY);
+
 			// STEP : If Child is Manufacturing Assembly ,Retrieving Procurement Intent
 			// ,serviceable ,PartInterchangeability from Object details
 			if (isAssembly) {
 				strProcurementIntent = (String) mPartDetails.get(ATTR__PROCUREMENTINTENT_MANUFACTURINGASSEMBLY);
 				strServiceable = (String) mPartDetails.get(ATTR__SERVICEABLEITEM_MANUFACTURINGASSEMBLY);
-				strPartInterchangeability = (String) mPartDetails
-						.get(ATTR__PARTINTERCHANGEABILITY_MANUFACTURINGASSEMBLY);
+				strPartInterchangeability = (String) mPartDetails.get(ATTR__PARTINTERCHANGEABILITY_MANUFACTURINGASSEMBLY);
+				strUnitOfMeasure = EACH;
 			} else {
 				if (null != strObjectID && !strObjectID.isEmpty()) {
 					// STEP : If Child is other than Manufacturing Assembly ,Retrieving Procurement
@@ -848,8 +881,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 					if (null != mLinkedCadPart) {
 						strProcurementIntent = (String) mLinkedCadPart.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
 						strServiceable = (String) mLinkedCadPart.get(ATTR__SERVICEABLEITEM_VPMREFERENCE);
-						strPartInterchangeability = (String) mLinkedCadPart
-								.get(ATTR__PARTINTERCHANGEABILITY_VPMREFERENCE);
+						strPartInterchangeability = (String) mLinkedCadPart.get(ATTR__PARTINTERCHANGEABILITY_VPMREFERENCE);
+						strLinkedVPMReferenceId = (String) mLinkedCadPart.get(DomainConstants.SELECT_ID);
 						strUnitOfMeasure = (String) mLinkedCadPart.get(ATTR__UNITOFMEASURE_VPMREFERENCE);
 					}
 				}
@@ -857,14 +890,49 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 
 			String strVariantEffectivity = "";
 			String strEffectivityObject = "";
-			Map<?, ?> mEffectivity = getEffectivity(context, strRelId);
-			strEffectivityObject = mEffectivity.toString();
+			String strDateEffectivity = "";
+			String strCADReleaseDateIn = "";
+			String strCADReleaseDateOut = "";
 
-			if (strEffectivityObject.contains(EFFECTIVITY_VARIANT + ":")) {
-				strVariantEffectivity = strEffectivityObject.substring(
-						strEffectivityObject.indexOf(EFFECTIVITY_VARIANT + ":") + 20,
-						strEffectivityObject.indexOf("ExpressionFormat") - 1);
-				// strVariantEffectivity = sortOptionCode(strVariantEffectivity);
+			if (TRUE.equals(strhasConfigEffectivity)) {
+				Map<?, ?> mEffectivity = getEffectivity(context, strRelId);
+				if (mEffectivity != null) {
+					strEffectivityObject = mEffectivity.toString();
+
+					if (strEffectivityObject.contains("Effectivity_Current_Evolution:")) {
+						strDateEffectivity = strEffectivityObject.substring(
+								strEffectivityObject.indexOf("Effectivity_Current_Evolution:") + 30,
+								strEffectivityObject.indexOf("]") + 1);
+
+						// To Identify False evolution Effectivity of instance (Delete case)
+						if (strDateEffectivity.contains("false")) {
+							setFalseEffectivityFlag(true);
+						} else {
+							String[] result = strDateEffectivity.split(" - ");
+							if (result.length >= 2) {
+								strCADReleaseDateIn = result[0];
+								strCADReleaseDateIn = strCADReleaseDateIn.substring(13);
+
+								if (strCADReleaseDateIn.length() >= 19)
+									strCADReleaseDateIn = strCADReleaseDateIn.substring(0,
+											strCADReleaseDateIn.length() - 9);
+
+								strCADReleaseDateOut = result[1];
+								strCADReleaseDateOut = strCADReleaseDateOut.substring(0,
+										strCADReleaseDateOut.length() - 1);
+
+								if (strCADReleaseDateOut.length() >= 19)
+									strCADReleaseDateOut = strCADReleaseDateOut.substring(0,
+											strCADReleaseDateOut.length() - 9);
+							}
+						}
+
+						if (strEffectivityObject.contains(EFFECTIVITY_VARIANT + ":")) {
+							strVariantEffectivity = strEffectivityObject.substring(strEffectivityObject.indexOf(EFFECTIVITY_VARIANT + ":") + 20,strEffectivityObject.indexOf("ExpressionFormat") - 1);
+							strVariantEffectivity = sortOptionCode(strVariantEffectivity);
+						}
+					}
+				}
 			}
 
 			// STEP : Adding Child Part Details in JsonObjectBuilder
@@ -914,24 +982,75 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				jMBOMPartBuilder.add(TAG_PARTINTERCHANGEABILITY, " ");
 
 			if (UIUtil.isNotNullAndNotEmpty(strVariantEffectivity))
-				jMBOMPartBuilder.add(TAG_VARIAENT_EFFECTIVITY, strVariantEffectivity);
+				jMBOMPartBuilder.add(TAG_VARIAENT_Effectivity, strVariantEffectivity);
 			else
-				jMBOMPartBuilder.add(TAG_VARIAENT_EFFECTIVITY, " ");
-			if (UIUtil.isNotNullAndNotEmpty(getCACompletionDate()))
-				jMBOMPartBuilder.add(TAG_DATEFROM, getCACompletionDate());
-			else
-				jMBOMPartBuilder.add(TAG_DATEFROM, "");
+				jMBOMPartBuilder.add(TAG_VARIAENT_Effectivity, " ");
+			if(getConfiguredFlag())
+			{
+				//False Effectivity Case :: In JSON { "Start Date" : Start date of CA and "End Date" = Start date of CA }
+				if(getFalseEffectivityFlag()) {
+					jMBOMPartBuilder.add(TAG_DATEFROM, getCAStartDate());
+					jMBOMPartBuilder.add(TAG_DATETO, getCAStartDate());
+				}
+				else 
+				{
+					SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd");
+					SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
+					if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateIn)){
+						Date date = format1.parse(strCADReleaseDateIn);
+						String formatDate = format2.format(date);
+						jMBOMPartBuilder.add(TAG_DATEFROM,formatDate);
+					}
+					else
+						jMBOMPartBuilder.add(TAG_DATEFROM," ");
 
-			jMBOMPartBuilder.add(TAG_DATETO, "12-31-9999");
-			jMBOMPartBuilder.add(TAG_REALIZED_DATA, true);
+					if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateOut)){
 
-//				if (false == isAssembly) {
-//					if( null != mLinkedCadPart ){
-//						if (SUBCONTRACT.equalsIgnoreCase(strProcurementIntent)) {
-//							processSubContractPart(context , mLinkedCadPart );
-//						}
-//					}
-//				}
+						if(strCADReleaseDateOut.equals("INF")){
+							strCADReleaseDateOut = "12-31-9999";
+							jMBOMPartBuilder.add(TAG_DATETO,strCADReleaseDateOut);
+						}
+						else{
+							// Single day active in PLM case ::: In JSON { "Start Date": start date of effectivity  and "End Date" = next day date }
+							if(strCADReleaseDateOut.equals(strCADReleaseDateIn)) {
+								String dt = strCADReleaseDateOut;  // Start date
+								SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+								Calendar c = Calendar.getInstance();
+								c.setTime(sdf.parse(dt));
+								c.add(Calendar.DATE, 1);  // number of days to add
+								dt = sdf.format(c.getTime());  // dt is now the new date
+								Date date = format1.parse(dt);
+								String formatDate = format2.format(date);
+								jMBOMPartBuilder.add(TAG_DATETO,formatDate);
+
+							}
+							else{
+								Date date = format1.parse(strCADReleaseDateOut);
+								String formatDate = format2.format(date);
+								jMBOMPartBuilder.add(TAG_DATETO,formatDate);
+							}
+						}
+					}
+					else
+						jMBOMPartBuilder.add(TAG_DATETO," ");
+				}
+				List<String> lstRealizedChanges = new ArrayList<String>();
+				lstRealizedChanges = getRealizedItemList();
+				if(lstRealizedChanges.size() != 0){
+					if(lstRealizedChanges.contains(strRelPhyId))
+						jMBOMPartBuilder.add(TAG_REALIZED_DATA, true);
+					else
+						jMBOMPartBuilder.add(TAG_REALIZED_DATA, false);
+				}
+			} else {
+				if (UIUtil.isNotNullAndNotEmpty(getCACompletionDate()))
+					jMBOMPartBuilder.add(TAG_DATEFROM, getCACompletionDate());
+				else
+					jMBOMPartBuilder.add(TAG_DATEFROM, "");
+
+				jMBOMPartBuilder.add(TAG_DATETO, "12-31-9999");
+				jMBOMPartBuilder.add(TAG_REALIZED_DATA, true);
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -951,9 +1070,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 		logger.writeLog("getEffectivity : START!!");
 		Map<?, ?> mEffectivity;
 		try {
-			// ContextUtil.pushContext(context, ROLE_ADMIN, DomainConstants.EMPTY_STRING,
-			// DomainConstants.EMPTY_STRING);
-//			ContextUtil.pushContext(context);
+			
+			//ContextUtil.pushContext(context,ROLE_ADMIN,DomainConstants.EMPTY_STRING,DomainConstants.EMPTY_STRING);
+			// ContextUtil.pushContext(context);
 			ConfigurationExposedFilterablesFactory configurationExposedFilterablesactory = new ConfigurationExposedFilterablesFactory();
 			IConfigurationExposedFilterables iConfigurationExposedFilterables = configurationExposedFilterablesactory
 					.getIPublicConfigurationFilterablesServices();
@@ -967,10 +1086,48 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			ex.printStackTrace();
 			throw ex;
 		} finally {
-//			ContextUtil.popContext(context);
+			// ContextUtil.popContext(context);
 		}
 		logger.writeLog("getEffectivity : END !!");
 		return mEffectivity;
+	}
+
+	/**
+	 * This Method Accepts Provide Part object id to get corresponding Linked CAD
+	 * Part details
+	 *
+	 * @param context
+	 * @param strObjectId :Provide Part Object Id
+	 * @param strRel      : Relationship Name
+	 * @return Details of Linked CAD Part
+	 * @throws Exception
+	 */
+	private Map<?, ?> getCADPartDetails(Context context, String strOBJId) throws Exception {
+		logger.writeLog("getCADPartDetails: START!!");
+		Map<?, ?> objInfoMap = new HashMap<>();
+		try {
+			if (null != strOBJId && !strOBJId.isEmpty()) {
+				// Object Selectables
+				StringList objectSelects = new StringList();
+				objectSelects.add(DomainConstants.SELECT_ID);
+				objectSelects.add(DomainConstants.SELECT_NAME);
+				objectSelects.add(ATTR_V_NAME);
+				objectSelects.add(ATTR_V_DESCRIPTION);
+				objectSelects.add(ATTR__SERVICEABLEITEM_VPMREFERENCE); // "Serviceable Item";
+				objectSelects.add(ATTR__PROCUREMENTINTENT_VPMREFERENCE); // "Procurement Intent"
+				objectSelects.add(ATTR__PARTINTERCHANGEABILITY_VPMREFERENCE); // "Part Interchangeability ";
+				objectSelects.add(ATTR__UNITOFMEASURE_VPMREFERENCE); // "Unit of Measure";
+
+				DomainObject boCADObj = DomainObject.newInstance(context, strOBJId);
+				objInfoMap = boCADObj.getInfo(context, objectSelects);
+				return objInfoMap;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		logger.writeLog("getCADPartDetails: END!!");
+		return objInfoMap;
 	}
 
 	/**
@@ -1005,8 +1162,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				relInfoList.add(DomainConstants.SELECT_TO_ID);
 
 				// Mql command to get CADConnectionPhysicalID
-				String strCADConnectionPhysicalID = MqlUtil.mqlCommand(context, "print bus " + strOBJId
-						+ " select relationship[" + strRel + "].paths.path.element.physicalid dump |");
+				String strCADConnectionPhysicalID = MqlUtil.mqlCommand(context, "print bus " + strOBJId + " select relationship[" + strRel + "].paths.path.element.physicalid dump |");
+
 				if (UIUtil.isNotNullAndNotEmpty(strCADConnectionPhysicalID)) {
 					StringList strListCADConnectionPathIDSplit = FrameworkUtil.split(strCADConnectionPhysicalID, "|");
 					String strCADConnectionPathObjectId = null;
@@ -1023,14 +1180,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 								StringList slVPMReferenceId = (StringList) relInfoMap.get(DomainConstants.SELECT_TO_ID);
 								String ostrVPMReferenceId = slVPMReferenceId.get(0);
 								if (UIUtil.isNotNullAndNotEmpty(ostrVPMReferenceId)) {
-									StringList slRelId = (StringList) relInfoMap.get(DomainConstants.SELECT_ID);
-									String strRelId = slRelId.get(0);
-									if (UIUtil.isNotNullAndNotEmpty(strRelId))
-										setRootSubContractRelId(strRelId);
-
 									DomainObject boCADObj = DomainObject.newInstance(context, ostrVPMReferenceId);
 									objInfoMap = boCADObj.getInfo(context, objectSelects);
-
 								}
 
 							} catch (Exception e) {
@@ -1057,40 +1208,18 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 *         BuySubC Part information in JSON]
 	 * @throws Exception
 	 */
-
-	private int processSubContractPart(Context context, Map<?, ?> mLinkedCadPart, String strConnectionId)
+	private int processSubContractPart(Context context, Map<?, ?> mCadPartDetails, String strConnectionId)
 			throws Exception {
 		logger.writeLog("processSubContractPart : START !!");
 		int intCADPartResponseString = 0;
 		try {
-
-			// STEP : Retrieving necessary information of SubContract Part
-			// STEP : Corresponding Sub-contract part and its child with Procurement intent
-			// "Buy-SubC" :: Write this info in another JSON Payload
-			String strObjectID = (String) mLinkedCadPart.get(DomainConstants.SELECT_ID);
-			String strRelId = getRootSubContractRelId();
-			if (UIUtil.isNotNullAndNotEmpty(strObjectID)) {
-				MapList mlSubContractList = new MapList();
-				mlSubContractList = getAllLevelSubContract(context, strObjectID);
-				if (!mlSubContractList.isEmpty()) {
-					logger.writeLog("AllLevelSubContract Count <<<<<<<<<<<<<<<<< " + mlSubContractList.size());
-
-					Map<?, ?> mSubContractPartDetails;
-					String strProcIntent;
-					for (int kdx = mlSubContractList.size() - 1; kdx >= 0; --kdx) {
-						mSubContractPartDetails = (Map<?, ?>) mlSubContractList.get(kdx);
-						logger.writeLog(" SubContract  <<<<<<<<<<<<<<<<< " + mSubContractPartDetails);
-
-						strProcIntent = (String) mSubContractPartDetails.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
-						if (SUBCONTRACT.equalsIgnoreCase(strProcIntent)) {
-							strRelId = (String) mSubContractPartDetails.get(DomainConstants.SELECT_RELATIONSHIP_ID);
-							intCADPartResponseString = sendSubContractPartPayload(context, mSubContractPartDetails,
-									strRelId, strConnectionId);
-						}
-					}
-				}
-				intCADPartResponseString = sendSubContractPartPayload(context, mLinkedCadPart, strRelId,
-						strConnectionId);
+			if (UIUtil.isNotNullAndNotEmpty(xcsrfToken) && UIUtil.isNotNullAndNotEmpty(cookie)) {
+			if(mCadPartDetails != null)
+				intCADPartResponseString = sendSubContractPartPayload(context, mCadPartDetails,strConnectionId);
+			}
+			else {
+				intCADPartResponseString = 500;
+				logger.writeLog("ERROR : Failed to get x-csrf-token and cookies from SAP Webservice ");
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1130,6 +1259,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				// RelationShip Selectables
 				StringList relSelects = new StringList();
 				relSelects.add(DomainConstants.SELECT_RELATIONSHIP_ID);
+				relSelects.add(ATTR__HASCONFIGEFFECTIVITY);
 
 				// STEP : Expanding the Input Linked CAD Part to get all children of it
 				DomainObject partDomObj = DomainObject.newInstance(context, strObjectId);
@@ -1172,8 +1302,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @throws Exception
 	 */
 
-	private int sendSubContractPartPayload(Context context, Map<?, ?> mSubContractPartDetails, String strRelId,
-			String strConnectionId) throws Exception {
+	private int sendSubContractPartPayload(Context context, Map<?, ?> mSubContractPartDetails,String strConnectionId) throws Exception {
 		logger.writeLog("sendSubContractPartPayload : START !!");
 		int intCADPartResponseString = 0;
 
@@ -1184,8 +1313,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			if (null != jEachSubContractPayloadBuilder) {
 				// STEP : Get SubContract part Header
 
-				JsonObjectBuilder jSubContractBuilder = getSubContractPartHeader(context, mSubContractPartDetails,
-						strRelId);
+				JsonObjectBuilder jSubContractBuilder = getSubContractPartHeader(context, mSubContractPartDetails);
 				if (null != jSubContractBuilder) {
 
 					// STEP : Retrieving all level BuySUBC Cad part , single level SubContract Cad
@@ -1224,8 +1352,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 								if (mlBuySubCObjects != null) {
 									for (int idx = 0; idx < mlBuySubCObjects.size(); idx++) {
 										mchildPartDetails = (Map<?, ?>) mlBuySubCObjects.get(idx);
-										strProcIntent = (String) mchildPartDetails
-												.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
+										strProcIntent = (String) mchildPartDetails.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
 										if (BUYSUBC.equalsIgnoreCase(strProcIntent)) {
 											jChildBuilder = addCADChildPartHeader(context, mchildPartDetails);
 											if (null != jChildBuilder)
@@ -1246,13 +1373,10 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 
 						JsonObject jSubContractPayloadObj = jEachSubContractPayloadBuilder.build();
 						if (jSubContractPayloadObj.containsKey(HEADER_PART)) {
-
 							String jsonEachPayloadString = jSubContractPayloadObj.toString();
-							jsonLogger.writeLog("JSON Payload Request for SubContract : <<< " + strTitle + " : >>> \n "
-									+ jsonEachPayloadString + " \n ");
+							jsonLogger.writeLog("JSON Payload Request for SubContract : <<< " + strTitle + " : >>> \n " + jsonEachPayloadString + " \n ");
 							intCADPartResponseString = callPostService(context, jSubContractPayloadObj);
-							jsonLogger.writeLog("Response for SubContract : <<< " + strTitle
-									+ " :  Payload from SAP WebService >>> \n " + intCADPartResponseString + " \n ");
+							jsonLogger.writeLog("Response for SubContract : <<< " + strTitle + " :  Payload from SAP WebService >>> \n " + intCADPartResponseString + " \n ");
 						}
 					}
 				}
@@ -1275,8 +1399,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @throws Exception
 	 */
 
-	private JsonObjectBuilder getSubContractPartHeader(Context context, Map<?, ?> mSubContractPartDetails,
-			String strRelId) throws Exception {
+	private JsonObjectBuilder getSubContractPartHeader(Context context, Map<?, ?> mSubContractPartDetails) throws Exception {
 		logger.writeLog("addSubContractPartHeader : START !!");
 		JsonObjectBuilder jSubContractBuilder = Json.createObjectBuilder();
 		try {
@@ -1286,20 +1409,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			String strTitle = (String) mSubContractPartDetails.get(ATTR_V_NAME);
 			String strdescription = (String) mSubContractPartDetails.get(ATTR_V_DESCRIPTION);
 			String strProcurementIntent = (String) mSubContractPartDetails.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
-			String strPartInterchangeability = (String) mSubContractPartDetails
-					.get(ATTR__PARTINTERCHANGEABILITY_VPMREFERENCE);
+			String strPartInterchangeability = (String) mSubContractPartDetails.get(ATTR__PARTINTERCHANGEABILITY_VPMREFERENCE);
 			String strServiceable = (String) mSubContractPartDetails.get(ATTR__SERVICEABLEITEM_VPMREFERENCE);
-
-			String strVariantEffectivity = null;
-			String strEffectivityObject = null;
-			Map<?, ?> mEffectivity = getEffectivity(context, strRelId);
-			strEffectivityObject = mEffectivity.toString();
-
-			if (strEffectivityObject.contains(EFFECTIVITY_VARIANT + ":")) {
-				strVariantEffectivity = strEffectivityObject.substring(
-						strEffectivityObject.indexOf(EFFECTIVITY_VARIANT + ":") + 20,
-						strEffectivityObject.indexOf("ExpressionFormat") - 1);
-			}
 
 			// STEP : Adding information of SubContract Part IN JSON Object
 			if (UIUtil.isNotNullAndNotEmpty(strTitle))
@@ -1317,10 +1428,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			else
 				jSubContractBuilder.add(TAG_OID, " ");
 
-			if (UIUtil.isNotNullAndNotEmpty(strRelId))
-				jSubContractBuilder.add(TAG_REL_ID, strRelId);
-			else
-				jSubContractBuilder.add(TAG_REL_ID, " ");
+			jSubContractBuilder.add(TAG_REL_ID, NOT_APPLICABLE);
 
 			if (UIUtil.isNotNullAndNotEmpty(strdescription))
 				jSubContractBuilder.add(TAG_DESCRIPTION, strdescription);
@@ -1344,14 +1452,11 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			else
 				jSubContractBuilder.add(TAG_PARTINTERCHANGEABILITY, " ");
 
-			if (UIUtil.isNotNullAndNotEmpty(strVariantEffectivity))
-				jSubContractBuilder.add(TAG_VARIAENT_EFFECTIVITY, strVariantEffectivity);
-			else
-				jSubContractBuilder.add(TAG_VARIAENT_EFFECTIVITY, " ");
-
-			jSubContractBuilder.add(TAG_DATEFROM, getCACompletionDate());
-			jSubContractBuilder.add(TAG_DATETO, "12-31-9999");
+			jSubContractBuilder.add(TAG_VARIAENT_Effectivity, NOT_APPLICABLE);
+			jSubContractBuilder.add(TAG_DATEFROM, NOT_APPLICABLE);
+			jSubContractBuilder.add(TAG_DATETO, NOT_APPLICABLE);
 			jSubContractBuilder.add(TAG_REALIZED_DATA, true);
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -1389,6 +1494,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				// RelationShip Selectables
 				StringList relSelects = new StringList();
 				relSelects.add(DomainConstants.SELECT_RELATIONSHIP_ID);
+				relSelects.add(ATTR__HASCONFIGEFFECTIVITY);
 
 				// STEP : Expanding the Input Linked CAD Part to get all children of it
 				DomainObject partDomObj = DomainObject.newInstance(context, strObjectId);
@@ -1433,19 +1539,40 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			String strProcIntent = (String) mchildPartDetails.get(ATTR__PROCUREMENTINTENT_VPMREFERENCE);
 			String strServiceItem = (String) mchildPartDetails.get(ATTR__SERVICEABLEITEM_VPMREFERENCE);
 			String strPartability = (String) mchildPartDetails.get(ATTR__PARTINTERCHANGEABILITY_VPMREFERENCE);
+			String strhasConfigEffectivity = (String) mchildPartDetails.get(ATTR__HASCONFIGEFFECTIVITY);
 
 			String strVariantEffectivity = null;
 			String strEffectivityObject = null;
-			Map<?, ?> mEffectivity = getEffectivity(context, strRId);
-			strEffectivityObject = mEffectivity.toString();
+			String strDateEffectivity = "";
+			String strCADReleaseDateIn = "";
+			String strCADReleaseDateOut = "";
 
-			if (strEffectivityObject.contains(EFFECTIVITY_VARIANT + ":")) {
-				strVariantEffectivity = strEffectivityObject.substring(
-						strEffectivityObject.indexOf(EFFECTIVITY_VARIANT + ":") + 20,
-						strEffectivityObject.indexOf("ExpressionFormat") - 1);
-				// strVariantEffectivity = sortOptionCode(strVariantEffectivity);
+			if (TRUE.equals(strhasConfigEffectivity)) {
+				Map<?, ?> mEffectivity = getEffectivity(context, strRId);
+				if (mEffectivity != null) {
+					strEffectivityObject = mEffectivity.toString();
+
+					if (strEffectivityObject.contains("Effectivity_Current_Evolution:")) {
+						strDateEffectivity = strEffectivityObject.substring(strEffectivityObject.indexOf("Effectivity_Current_Evolution:") + 30,strEffectivityObject.indexOf("]") + 1);
+
+						String[] result = strDateEffectivity.split(" - ");
+						if (result.length >= 2) {
+							strCADReleaseDateIn = result[0];
+							strCADReleaseDateIn = strCADReleaseDateIn.substring(13);
+
+							if (strCADReleaseDateIn.length() >= 19)
+								strCADReleaseDateIn = strCADReleaseDateIn.substring(0,strCADReleaseDateIn.length() - 9);
+
+							strCADReleaseDateOut = result[1];
+							strCADReleaseDateOut = strCADReleaseDateOut.substring(0,strCADReleaseDateOut.length() - 1);
+
+							if (strCADReleaseDateOut.length() >= 19)
+								strCADReleaseDateOut = strCADReleaseDateOut.substring(0,strCADReleaseDateOut.length() - 9);
+
+						}
+					}
+				}
 			}
-
 			// STEP : Adding information of each BuySubC Part IN JSON Object
 
 			if (UIUtil.isNotNullAndNotEmpty(strVName))
@@ -1493,13 +1620,32 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			else
 				jCadPartBuilder.add(TAG_PARTINTERCHANGEABILITY, " ");
 
-			if (UIUtil.isNotNullAndNotEmpty(strVariantEffectivity))
-				jCadPartBuilder.add(TAG_VARIAENT_EFFECTIVITY, strVariantEffectivity);
-			else
-				jCadPartBuilder.add(TAG_VARIAENT_EFFECTIVITY, " ");
+			jCadPartBuilder.add(TAG_VARIAENT_Effectivity, NOT_APPLICABLE);
 
-			jCadPartBuilder.add(TAG_DATEFROM, getCACompletionDate());
-			jCadPartBuilder.add(TAG_DATETO, "12-31-9999");
+			SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd");
+			SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
+			if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateIn)){
+				Date date = format1.parse(strCADReleaseDateIn);
+				String formatDate = format2.format(date);
+				jCadPartBuilder.add(TAG_DATEFROM,formatDate);
+			}
+			else
+				jCadPartBuilder.add(TAG_DATEFROM," ");
+
+			if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateOut)){
+				if(strCADReleaseDateOut.equals("INF")){
+					strCADReleaseDateOut = "12-31-9999";
+					jCadPartBuilder.add(TAG_DATETO,strCADReleaseDateOut);
+				}
+				else{
+					Date date = format1.parse(strCADReleaseDateOut);
+					String formatDate = format2.format(date);
+					jCadPartBuilder.add(TAG_DATETO,formatDate);
+				}
+			}
+			else
+				jCadPartBuilder.add(TAG_DATETO," ");
+
 			jCadPartBuilder.add(TAG_REALIZED_DATA, true);
 
 		} catch (Exception e) {
@@ -1540,6 +1686,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 				// RelationShip Selectables
 				StringList relSelects = new StringList();
 				relSelects.add(DomainConstants.SELECT_RELATIONSHIP_ID);
+				relSelects.add(ATTR__HASCONFIGEFFECTIVITY);
 
 				// STEP : Expanding the Input Linked CAD Part to get all children of it
 				DomainObject partDomObj = DomainObject.newInstance(context, strObjectId);
@@ -1606,18 +1753,17 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 
 			// STEP : Invoking SAP webService with Post Method
 			HttpResponse response = httpClient.execute(postURL);
-			System.out.println("postURL -- " + postURL);
+			logger.writeLog("postURL -- " + postURL);
 			intResponseCode = response.getStatusLine().getStatusCode();
 
 			if (intResponseCode == HttpStatus.SC_OK) { // success
 				// STEP : Collecting the acknowledgement from SAP webService
-				logger.writeLog(
-						"POST request successful , response code ==  " + response.getStatusLine().getStatusCode());
+				logger.writeLog("POST request successful , response code ==  " + response.getStatusLine().getStatusCode());
 			} else {
 				logger.writeLog("POST request failed , response code ==  " + response.getStatusLine().getStatusCode());
 			}
 			result = EntityUtils.toString(response.getEntity());
-			System.out.println("LCD Result--------------- " + result);
+			logger.writeLog("POST request Result--------------- " + result);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -1645,12 +1791,17 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 
 			if (intResponseCode == 200) {
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_IN_WORK);
-				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
-						MSG_JSON_FORMAT_VALIDATION_COMPLETED);
-			} else {
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,MSG_JSON_FORMAT_VALIDATION_COMPLETED);
+			} 
+			else if(intResponseCode == 417)
+			{
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_FAILED);
-				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
-						MSG_JSON_FORMAT_VALIDATION_FAILED);
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,MSG_JSON_FORMAT_VALIDATION_FAILED);
+			}
+			else
+			{
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_FAILED);
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,MSG_NETWORK_FAILURE);
 			}
 			ContextUtil.popContext(context);
 		} catch (Exception e) {
@@ -1667,22 +1818,26 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @return
 	 * @throws Exception
 	 */
-	private void processWebServiceResponseForManufacturingAssembly(Context context, int intResponseCode,
-			String strConnectionId) throws NullPointerException {
+	private void processWebServiceResponseForManufacturingAssembly(Context context, int intResponseCode,String strConnectionId) throws NullPointerException {
 		logger.writeLog("ProcessWebServiceResponseForManufacturingAssembly START");
 		try {
 			ContextUtil.pushContext(context);
-
 			DomainRelationship domRelBomConnectedToAnchorObj = DomainRelationship.newInstance(context, strConnectionId);
 
 			if (intResponseCode == 200) {
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_IN_WORK);
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
 						MSG_JSON_FORMAT_VALIDATION_COMPLETED);
-			} else {
+			} 
+			else if(intResponseCode == 417)
+			{
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_FAILED);
-				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
-						MSG_JSON_FORMAT_VALIDATION_FAILED);
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,MSG_JSON_FORMAT_VALIDATION_FAILED);
+			}
+			else
+			{
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_FAILED);
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,MSG_NETWORK_FAILURE);
 			}
 			ContextUtil.popContext(context);
 		} catch (Exception e) {
@@ -1699,7 +1854,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @param String  strComment : History Comment
 	 * @throws Exception
 	 */
-	private void addObjectHistory(Context context, String strId, String strComment) throws Exception {
+	/*	private void addObjectHistory(Context context, String strId, String strComment) throws Exception {
 		logger.writeLog("addObjectHistory...Start");
 		try {
 			if (UIUtil.isNotNullAndNotEmpty(strId)) {
@@ -1711,7 +1866,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 		}
 		logger.writeLog("addObjectHistory...Finish");
 	}
-
+	 */
 	/**
 	 * This Method is to add the history on Relationship
 	 *
@@ -1720,7 +1875,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @param String  strComment : History Comment
 	 * @throws Exception
 	 */
-	private void addRelationshipHistory(Context context, String strRelId, String strComment) throws Exception {
+	/*		private void addRelationshipHistory(Context context, String strRelId, String strComment) throws Exception {
 		logger.writeLog("addRelationshipHistory...Start");
 		try {
 			if (UIUtil.isNotNullAndNotEmpty(strRelId)) {
@@ -1732,7 +1887,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			e.printStackTrace();
 		}
 		logger.writeLog("addRelationshipHistory...Finish");
-	}
+	}*/
 
 	/**
 	 * This Method is to log the SAP WebService Connection Error on Object
@@ -1742,7 +1897,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 *                Response Code
 	 * @throws Exception
 	 */
-	private void LogWebServiceConnectionErrorOnHeader(Context context, String strResponseStatusLine) throws Exception {
+	/*private void LogWebServiceConnectionErrorOnHeader(Context context, String strResponseStatusLine) throws Exception {
 		logger.writeLog("LogWebServiceConnectionErrorOnHeader...Start");
 		try {
 			JsonArray realizedItems = getChangeActionJson().getJsonObject("changeaction").getJsonArray("realized");
@@ -1797,7 +1952,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 		}
 
 		logger.writeLog("LogWebServiceConnectionErrorOnHeader...End");
-	}
+	}*/
 
 	/**
 	 * This Method is to Set the Change Action JSON
@@ -1851,9 +2006,64 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @param strCookie : Cookie for the Session
 	 * @throws Exception
 	 */
-	private static int setSubContractFailedFlag(boolean isFailed) {
+	/*	private static int setSubContractFailedFlag(boolean isFailed) {
 		subContractStatus = isFailed;
 		return 0;
+	}
+	 */
+	/**
+	 * This Method is to Get the Cookie for the Session
+	 *
+	 * @param context
+	 * @return COOKIE : Cookie for the Session
+	 * @throws Exception
+	 */
+	/*	private static boolean getSubContractFailedFlag() {
+		return subContractStatus;
+	}
+	 */
+	/**
+	 * This Method is to Set the Change Action Completion Date
+	 *
+	 * @param context
+	 * @return CA_RELEASED_DATE : Change Action Completion Date
+	 * @throws Exception
+	 */
+	/*	private void setRootSubContractRelId(String strSubContractRelId) {
+		subContractRelId = strSubContractRelId;
+	}*/
+
+	/**
+	 * This Method is to Get the Change Action Completion Date
+	 *
+	 * @param context
+	 * @return CA_RELEASED_DATE : Change Action Completion Date
+	 * @throws Exception
+	 */
+	/*	private static String getRootSubContractRelId() {
+		return subContractRelId;
+	}*/
+
+	/**
+	 * This Method is to Get the Cookie for the Session
+	 *
+	 * @param context
+	 * @return COOKIE : Cookie for the Session
+	 * @throws Exception
+	 */
+	private static boolean getFalseEffectivityFlag() throws Exception {
+		return FALSE_EFFECTIVITY_STATUS;
+	}
+
+	/**
+	 * This Method is to Set the configured flag of object
+	 *
+	 * @param context
+	 * @return CA_RELEASED_DATE : Change Action Completion Date
+	 * @throws Exception
+	 */
+	private void setFalseEffectivityFlag(boolean bFalseEffectivityFlag)throws Exception {
+		FALSE_EFFECTIVITY_STATUS = bFalseEffectivityFlag;
 	}
 
 	/**
@@ -1863,30 +2073,69 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @return COOKIE : Cookie for the Session
 	 * @throws Exception
 	 */
-	private static boolean getSubContractFailedFlag() {
-		return subContractStatus;
+	private static boolean getConfiguredFlag() throws Exception {
+		return CONFIGURABLE_STATUS;
 	}
 
 	/**
-	 * This Method is to Set the Change Action Completion Date
+	 * This Method is to Set the configured flag of object
 	 *
 	 * @param context
 	 * @return CA_RELEASED_DATE : Change Action Completion Date
 	 * @throws Exception
 	 */
-	private void setRootSubContractRelId(String strSubContractRelId) {
-		subContractRelId = strSubContractRelId;
+	private void setConfiguredFlag(boolean bConfigFlag) throws Exception{
+		CONFIGURABLE_STATUS = bConfigFlag;
 	}
 
 	/**
-	 * This Method is to Get the Change Action Completion Date
+	 * This Method is to Set the configured flag of object
 	 *
 	 * @param context
 	 * @return CA_RELEASED_DATE : Change Action Completion Date
 	 * @throws Exception
 	 */
-	private static String getRootSubContractRelId() {
-		return subContractRelId;
+	private void setRealizedItemList(Context context , JsonObject realizedItem) throws Exception {
+		logger.writeLog("setRealizedItemList()..... START");
+		try {
+			List<String> lstRealizedChanges = new ArrayList<String>();		
+			String relPhyId = "";
+			JsonArray amos = realizedItem.getJsonArray("amo");
+			for(int a = 0; a < amos.size(); a++) {
+				JsonObject amo = amos.getJsonObject(a);
+				if(amo.containsKey("before")) {
+					relPhyId = amo.getJsonObject("before").get("id").toString().split(":")[1].replaceAll("\"", "");
+					if (UIUtil.isNotNullAndNotEmpty(relPhyId)){
+						lstRealizedChanges.add(relPhyId);
+
+					}
+				}
+				if(amo.containsKey("after")) {
+					relPhyId = amo.getJsonObject("after").get("id").toString().split(":")[1].replaceAll("\"", "");
+					if (UIUtil.isNotNullAndNotEmpty(relPhyId)){
+						lstRealizedChanges.add(relPhyId);
+					}
+				}
+
+			}
+			if(lstRealizedChanges.size()!=0){
+				LIST_REALIZED_CHANGES =  lstRealizedChanges;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		logger.writeLog("setRealizedItemList()..... END");
+	}
+
+	/**
+	 * This Method is to Get the Cookie for the Session
+	 *
+	 * @param context
+	 * @return COOKIE : Cookie for the Session
+	 * @throws Exception
+	 */
+	private static List<String> getRealizedItemList() throws Exception {
+		return LIST_REALIZED_CHANGES;
 	}
 
 	/**
@@ -1897,10 +2146,23 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 * @return String Array in arguments ( x-csrf-token and cookies )
 	 * @throws Exception
 	 */
-	private String callGETService(Context context) throws Exception {
+	private int callGETService(Context context) throws Exception {
 		logger.writeLog("callGETService()..... START");
 
 		String strStatusLine = null;
+		int responseCode = 0;
+
+		String userName = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
+				"LCD_3DXSAPStringResource_en.SAP.UserName", language);
+
+		String password = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
+				"LCD_3DXSAPStringResource_en.SAP.Password", language);
+
+		url = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
+				"LCD_3DXSAPStringResource_en.SAP.WebServiceURL.DEV", language);
+
+		httpClient = HttpClients.createDefault();
+
 		try {
 			// STEP : Creating Authorization Header for calling SAP webService using GET
 			// method
@@ -1919,14 +2181,14 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			getURL.setHeader(authorization, "Basic " + authStringEnc);
 			getURL.setHeader(xcsrfToken, "fetch");
 
-			System.out.println("callGETService getURL ---- " + getURL);
+			logger.writeLog("callGETService getURL ---- " + getURL);
 			// STEP : Invoking SAP webService with GET Method
 			HttpResponse response = httpClient.execute(getURL);
 
 			// STEP : Collecting the acknowledgement from SAP webService
-			int responseCode = response.getStatusLine().getStatusCode();
+			responseCode = response.getStatusLine().getStatusCode();
 			strStatusLine = response.getStatusLine().toString();
-			System.out.println("callGETService responseCode ---- " + responseCode);
+			logger.writeLog("callGETService responseCode ---- " + responseCode);
 			if (responseCode == HttpStatus.SC_OK) { // success
 
 				// STEP : Collecting the x-csrf-token and cookies from SAP webService Response
@@ -1940,12 +2202,10 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 						xcsrftoken = header.getValue();
 					}
 				}
-
 				if (UIUtil.isNotNullAndNotEmpty(xcsrftoken)) {
 					logger.writeLog(xcsrfToken + xcsrftoken);
 					logger.writeLog("cookies" + strCookie);
-					logger.writeLog(
-							"GET request successful , Response code ==  " + response.getStatusLine().getStatusCode());
+					logger.writeLog("GET request successful , Response code ==  " + response.getStatusLine().getStatusCode());
 					logger.writeLog("GET request Successful , Response Status Line==  " + strStatusLine);
 					xcsrfToken = xcsrftoken;
 					cookie = strCookie;
@@ -1958,7 +2218,188 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			e.printStackTrace();
 		}
 		logger.writeLog("callGETService()..... END");
-		return strStatusLine;
+		return responseCode;
+	}
+
+	/***
+	 * This method is to sort the Option code
+	 * 
+	 * @param strOptionCode
+	 * @return
+	 * @throws Exception
+	 */
+	public String sortOptionCode(String strOptionCode) throws Exception {
+		String strSortedOptionCode = "";
+		try {
+			Character charStartingBraces = new Character('{');
+			Character charClosingBraces = new Character('}');
+
+			for (int i = 0; i < strOptionCode.length(); i++) {
+				if (charStartingBraces.equals(strOptionCode.charAt(i))
+						|| charClosingBraces.equals(strOptionCode.charAt(i))) {
+					String strTempOptionCodeToSort = "";
+					String strTemp = "";
+					int icount = 0;
+
+					for (int j = i; j < strOptionCode.length(); j++) {
+						strTempOptionCodeToSort = strTempOptionCodeToSort + strOptionCode.charAt(j);
+
+						if (charClosingBraces.equals(strOptionCode.charAt(j))) {
+							break;
+						}
+						icount++;
+					}
+
+					// Removing Starting Braces and Closing Braces from Option Code
+					strTempOptionCodeToSort = strTempOptionCodeToSort.substring(1,strTempOptionCodeToSort.length() - 1);
+
+					java.util.List<String> values = sortAlphaNumeric(strTempOptionCodeToSort);
+
+					strTemp = values.toString();
+
+					strTemp = strTemp.substring(1, strTemp.length() - 1);
+
+					strTemp = "{" + strTemp + "}";
+					strSortedOptionCode = strSortedOptionCode + strTemp;
+
+					i = i + icount;
+
+				} else {
+					strSortedOptionCode = strSortedOptionCode + strOptionCode.charAt(i);
+				}
+			}
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			throw ex;
+
+		}
+		return strSortedOptionCode;
+	}
+
+	/***
+	 *
+	 * @param strValue
+	 * @return
+	 * @throws Exception
+	 */
+	private java.util.List<String> sortAlphaNumeric(String strValue) throws Exception {
+		String[] OptionCodeArray = strValue.split(",");
+
+		java.util.List<String> values = new ArrayList<String>(Arrays.asList(OptionCodeArray));
+
+		Comparator<String> com = (o1, o2) -> {
+			return comparator(o1, o2);
+		}; // lambda expression
+
+		Collections.sort(values, com);
+
+		return values;
+	}
+
+	/***
+	 *
+	 * @param s1
+	 * @param s2
+	 * @return
+	 */
+	private static int comparator(String s1, String s2) {
+		String[] pt1 = s1.split("((?<=[a-z])(?=[0-9]))|((?<=[0-9])(?=[a-z]))");
+		String[] pt2 = s2.split("((?<=[a-z])(?=[0-9]))|((?<=[0-9])(?=[a-z]))");
+		// pt1 and pt2 arrays will have the string split in alphabets and numbers
+
+		int i = 0;
+		if (Arrays.equals(pt1, pt2))
+			return 0;
+		else {
+			for (i = 0; i < Math.min(pt1.length, pt2.length); i++)
+				if (!pt1[i].equals(pt2[i])) {
+					if (!isNumber(pt1[i], pt2[i])) {
+						if (pt1[i].compareTo(pt2[i]) > 0)
+							return 1;
+						else
+							return -1;
+					} else {
+						int nu1 = Integer.parseInt(pt1[i]);
+						int nu2 = Integer.parseInt(pt2[i]);
+						if (nu1 > nu2)
+							return 1;
+						else
+							return -1;
+					}
+				}
+		}
+
+		if (pt1.length > i)
+			return 1;
+		else
+			return -1;
+	}
+
+	/***
+	 *
+	 * @param n1
+	 * @param n2
+	 * @return
+	 */
+	private static Boolean isNumber(String n1, String n2) {
+		try {
+			int nu1 = Integer.parseInt(n1);
+			int nu2 = Integer.parseInt(n2);
+			return true;
+		} catch (Exception x) {
+			return false;
+		}
+	}
+
+	/**
+	 * This Method is to Set the Change Action Completion Date
+	 *
+	 * @param context
+	 * @return CA_RELEASED_DATE : Change Action Completion Date
+	 * @throws Exception
+	 */
+	private void setCAStartDate() throws Exception {
+		try {
+			String strCAStartDate =null ;
+			String formatDate =null ;
+			String changeActionName = getChangeActionJson().getJsonObject("changeaction").getString("name");
+			String changeActionApplicabilityTxt = getChangeActionJson().getJsonObject("changeaction").getJsonObject("applicability").getString("expressionTXT");
+			if(UIUtil.isNotNullAndNotEmpty(changeActionApplicabilityTxt)) {
+				String changeActionApplicability = changeActionApplicabilityTxt.substring(changeActionApplicabilityTxt.indexOf("[")+1, changeActionApplicabilityTxt.indexOf("]"));
+				logger.writeLog("changeActionApplicability :" + changeActionApplicability);
+				String[] changeActionApplicabilityDate = changeActionApplicability.split(" - ");
+				if(changeActionApplicabilityDate.length >=2){
+					strCAStartDate = changeActionApplicabilityDate[0];
+					if(strCAStartDate.length() >= 19)
+						strCAStartDate = strCAStartDate.substring(0, strCAStartDate.length() - 9);
+
+					SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd");
+					SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
+					if (UIUtil.isNotNullAndNotEmpty(strCAStartDate)){
+						Date date = format1.parse(strCAStartDate);
+						formatDate = format2.format(date);
+					} 
+				}
+			}
+			if(UIUtil.isNotNullAndNotEmpty(formatDate))
+				CA_START_DATE = formatDate;
+
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * This Method is to Get the Change Action Completion Date
+	 *
+	 * @param context
+	 * @return CA_RELEASED_DATE : Change Action Completion Date
+	 * @throws Exception
+	 */
+	private static String getCAStartDate() throws Exception {
+		return CA_START_DATE;
 	}
 
 	/**
@@ -1968,12 +2409,14 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 	 */
 	private void loggerInitialization(Context context) throws Exception {
 		try {
+			language = context.getSession().getLanguage();
+
 			String strCompleteLogger = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
 					"LCD_3DXSAPStringResource_en.logger.CompleteLogger", language);
 			String strJSONLogger = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
 					"LCD_3DXSAPStringResource_en.logger.JSONLogger", language);
-//			String strDateFormat = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
-//					"LCD_3DXSAPStringResource_en.logger.DateFormat", getLanguage());
+			//			String strDateFormat = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
+			//					"LCD_3DXSAPStringResource_en.logger.DateFormat", getLanguage());
 			String strExtension = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
 					"LCD_3DXSAPStringResource_en.logger.Extension", language);
 			String strUnderscore = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
@@ -2005,15 +2448,15 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO extends LCD_Constants_mxJPO {
 			if (!exists) {
 				tmpDir.mkdirs();
 			}
-			System.out.println("getChangeActionJson() <<<<<<<<< " + getChangeActionJson());
-			System.out.println("getChangeActionJson().getJsonObject(\"changeaction\") <<<<<<<<< "
-					+ getChangeActionJson().getJsonObject("changeaction"));
+			//			System.out.println("getChangeActionJson() <<<<<<<<< " + getChangeActionJson());
+			//			System.out.println("getChangeActionJson().getJsonObject(\"changeaction\") <<<<<<<<< "
+			//					+ getChangeActionJson().getJsonObject("changeaction"));
 
-			String changeActionName = getChangeActionJson().getJsonObject("changeaction").getString("name");
-			System.out.println("changeActionName <<<<<<<<< " + changeActionName);
-			logger = new SimpleLogger(strLogPath + changeActionName + strUnderscore + strCompleteLogName);
+			//			String changeActionName = getChangeActionJson().getJsonObject("changeaction").getString("name");
+			//			System.out.println("changeActionName <<<<<<<<< " + changeActionName);
+			logger = new SimpleLogger(strLogPath + strUnderscore + strCompleteLogName);
 			System.out.println("logger <<<<<<<<< " + logger);
-			jsonLogger = new SimpleLogger(strLogPath + changeActionName + strUnderscore + strJSONLogName);
+			jsonLogger = new SimpleLogger(strLogPath + strUnderscore + strJSONLogName);
 
 			System.out.println("jsonLogger <<<<<<<<< " + jsonLogger);
 
