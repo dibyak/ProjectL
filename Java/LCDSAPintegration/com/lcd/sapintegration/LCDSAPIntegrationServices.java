@@ -6,6 +6,8 @@ import com.matrixone.apps.domain.DomainConstants;
 import com.matrixone.apps.domain.DomainObject;
 import com.matrixone.apps.domain.DomainRelationship;
 import com.matrixone.apps.domain.util.MapList;
+import com.matrixone.apps.framework.ui.UIUtil;
+
 import java.util.Iterator;
 import java.util.Map;
 import javax.json.Json;
@@ -26,7 +28,7 @@ public class LCDSAPIntegrationServices extends RestService {
   private static final String TYPE_LCD_BOM_ANCHOR_OBJECT = "LCD_BOMAnchorObject";
   private static final String NAME_LCD_ANCHOR_OBJECT = "LCD_AnchorObject";
   private static final String REV_LCD_ANCHOR_OBJECT = "A";
-  private static final String VAULT_ESERVICE_PRODUCTION = "eService Administration";
+  private static final String VAULT_ESERVICE_PRODUCTION = "eService Production";
   
   @GET
   @Path("/getMA")
@@ -39,7 +41,7 @@ public class LCDSAPIntegrationServices extends RestService {
       BusinessObject busObjAchor = new BusinessObject("LCD_BOMAnchorObject", 
           "LCD_AnchorObject", 
           "A", 
-          "eService Administration");
+          "eService Production");
       DomainObject domObj = DomainObject.newInstance(context, busObjAchor);
       StringList slObjectSelect = new StringList();
       slObjectSelect.add("id");
@@ -72,25 +74,46 @@ public class LCDSAPIntegrationServices extends RestService {
         String Status = relEbom.getAttributeValue(context, "LCD_ProcessStatusFlag");
         String ReasonForFailure = relEbom.getAttributeValue(context, "LCD_ReasonforFailure");
         String CAID = relEbom.getAttributeValue(context, "LCD_CAID");
-        StringList CAobjectSelects = new StringList();
-        CAobjectSelects.add("name");
-        CAobjectSelects.add(SELECT_ATTRIBUTE_ACTUAL_COMPLETION_DATE);
-        DomainObject domCAObj = DomainObject.newInstance(context, CAID);
-        Map<?, ?> CaAttrDetails = domCAObj.getInfo(context, CAobjectSelects);
-        jobMA.add("ConnectionID", sConnectionId);
-        jobMA.add("caID", CAID);
-        jobMA.add("BOMComponentID", (String)item.get("id"));
-        jobMA.add("BOMComponentName", (String)item.get("name"));
-        jobMA.add("status", Status);
-        jobMA.add("revision", (String)item.get("revision"));
-        jobMA.add("title", (String)item.get("attribute[PLMEntity.V_Name]"));
-        jobMA.add("maturity", (String)item.get("current"));
-        jobMA.add("description", (String)item.get("attribute[PLMEntity.V_description]"));
-        jobMA.add("caCompletedTime", (String)CaAttrDetails.get(SELECT_ATTRIBUTE_ACTUAL_COMPLETION_DATE));
-        jobMA.add("caName", (String)CaAttrDetails.get("name"));
-        jobMA.add("SapFeedbackTimeStamp", (String)item.get("attribute[LCDMF_ManufacturingAssembly.LCDMF_SAPMBOMUpdatedOn]"));
-        jobMA.add("SapFeedbackMessage", ReasonForFailure);
-        jabMAs.add(jobMA);
+        
+        if(UIUtil.isNullOrEmpty(CAID)) {
+        	jobMA.add("ConnectionID", sConnectionId);
+            jobMA.add("caID", CAID);
+            jobMA.add("BOMComponentID", (String)item.get("id"));
+            jobMA.add("BOMComponentName", (String)item.get("name"));
+            jobMA.add("status", Status);
+            jobMA.add("revision", (String)item.get("revision"));
+            jobMA.add("title", (String)item.get("attribute[PLMEntity.V_Name]"));
+            jobMA.add("maturity", (String)item.get("current"));
+            jobMA.add("description", (String)item.get("attribute[PLMEntity.V_description]"));
+            jobMA.add("caCompletedTime", "");
+            jobMA.add("caName", "");
+            jobMA.add("SapFeedbackTimeStamp", (String)item.get("attribute[LCDMF_ManufacturingAssembly.LCDMF_SAPMBOMUpdatedOn]"));
+            jobMA.add("SapFeedbackMessage", ReasonForFailure);
+            jabMAs.add(jobMA);
+        	 
+        } else {
+        	StringList CAobjectSelects = new StringList();
+            CAobjectSelects.add("name");
+            CAobjectSelects.add(SELECT_ATTRIBUTE_ACTUAL_COMPLETION_DATE);
+            DomainObject domCAObj = DomainObject.newInstance(context, CAID);
+            Map<?, ?> CaAttrDetails = domCAObj.getInfo(context, CAobjectSelects);
+            jobMA.add("ConnectionID", sConnectionId);
+            jobMA.add("caID", CAID);
+            jobMA.add("BOMComponentID", (String)item.get("id"));
+            jobMA.add("BOMComponentName", (String)item.get("name"));
+            jobMA.add("status", Status);
+            jobMA.add("revision", (String)item.get("revision"));
+            jobMA.add("title", (String)item.get("attribute[PLMEntity.V_Name]"));
+            jobMA.add("maturity", (String)item.get("current"));
+            jobMA.add("description", (String)item.get("attribute[PLMEntity.V_description]"));
+            jobMA.add("caCompletedTime", (String)CaAttrDetails.get(SELECT_ATTRIBUTE_ACTUAL_COMPLETION_DATE));
+            jobMA.add("caName", (String)CaAttrDetails.get("name"));
+            jobMA.add("SapFeedbackTimeStamp", (String)item.get("attribute[LCDMF_ManufacturingAssembly.LCDMF_SAPMBOMUpdatedOn]"));
+            jobMA.add("SapFeedbackMessage", ReasonForFailure);
+            jabMAs.add(jobMA);
+        }
+        
+       
       } 
       String strOutput = jabMAs.build().toString();
       res = Response.ok(strOutput).type("application/json").build();

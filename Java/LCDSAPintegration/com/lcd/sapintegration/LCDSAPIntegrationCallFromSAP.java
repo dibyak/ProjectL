@@ -34,12 +34,17 @@ import com.matrixone.apps.framework.ui.UIUtil;
 import matrix.db.BusinessObject;
 import matrix.db.Context;
 import matrix.db.JPO;
+import matrix.util.MatrixException;
 import matrix.util.StringList;
 
 @Path("/LCDGetFromSAPServices")
 public class LCDSAPIntegrationCallFromSAP extends RestService {
 
-	private static final String TYPE_APPLICATION_FORMAT = "application/json";
+	private static final String TYPE_LCD_BOM_ANCHOR_OBJECT = "LCD_BOMAnchorObject";
+	private static final String NAME_LCD_ANCHOR_OBJECT = "LCD_AnchorObject";
+	private static final String REV_LCD_ANCHOR_OBJECT = "A";
+	private static final String VAULT_ESERVICE_PRODUCTION = "eService Production";
+	private static final String REL_LCD_SAP_BOM_INTERFACE = "LCD_SAPBOMInterface";
 
 	private static final String ATTR_LCD_PROCESS_STATUS_FLAG = "LCD_ProcessStatusFlag";
 	private static final String ATTR_LCD_REASON_FOR_FAILURE = "LCD_ReasonforFailure";
@@ -83,15 +88,16 @@ public class LCDSAPIntegrationCallFromSAP extends RestService {
 	public static final String NOT_APPLICABLE = "NA";
 
 	public static final String FALSE = "FALSE";
-	
+
 	public static final String NEW_LINE = "\n";
 	public static final String COLON_SEP = ":";
 
 	public static final String STATUS_COMPLETE = "Complete";
 	public static final String KEY_STATUS = "status";
 	public static final String KEY_ERROR_MESSAGE = "ErrorMessage";
-	
+
 	private static final String MSG_SUCCESS = "Success";
+	private static final String DATE_FORMAT = "MM/dd/yyyy hh.mm.ss aa";
 
 	/**
 	 * Method
@@ -107,127 +113,121 @@ public class LCDSAPIntegrationCallFromSAP extends RestService {
 	@POST
 	@Path("/callFromSAP")
 	@Consumes({ "application/json", "application/ds-json" })
-	public Response sendFailedDataToSap(@javax.ws.rs.core.Context HttpServletRequest request, String paramString)
-			throws NullPointerException {
-		
+	public Response processWebServiceResponse(@javax.ws.rs.core.Context HttpServletRequest request, String paramString)
+			throws Exception {
+
 		System.out.println(">>>>>LCDSAPIntegrationCallFromSAP---sendFailedDataToSap()-----STARTED");
 		Response res = null;
 		String strConnectionId = "";
 
+		boolean isContextPushed = false;
+		boolean isSCMandatory = false;
+		matrix.db.Context context = getAuthenticatedContext(request, isSCMandatory);
+
 		try {
-			boolean isSCMandatory = false;
-			matrix.db.Context context = getAuthenticatedContext(request, isSCMandatory);
-			
+
+			ContextUtil.pushContext(context);
+			isContextPushed = true;
+
 			StringBuffer sbfErrMes = new StringBuffer();
-			SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy hh.mm.ss aa");
-			
+			SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT);
+
 			JsonReader jsonReader = Json.createReader(new StringReader(paramString));
 			JsonObject jWebServiceResponse = jsonReader.readObject();
-				
-			if (null != jWebServiceResponse) {
-				if (jWebServiceResponse.containsKey(HEADER_PART)) {
-					JsonObject joHeaderPart = jWebServiceResponse.getJsonObject(HEADER_PART);
-					if (null != joHeaderPart) {
-						String resultType = jWebServiceResponse.getString(TAG_TYPE);
 
-						if (UIUtil.isNotNullAndNotEmpty(resultType) && resultType.equalsIgnoreCase(FAIL)) {
-							String strErrorMessage = joHeaderPart.getString(TAG_ERROR_MESSAGE);
-							String strObjID = joHeaderPart.getString(TAG_OID);
-							String strObjTitle = joHeaderPart.getString(TAG_TITLE);
-							String strBusWhere = "id==\"" + strObjID + "\"";
-							BusinessObject busObjAchor = new BusinessObject("LCD_BOMAnchorObject", 
-							          "LCD_AnchorObject", 
-							          "A", 
-							          "eService Administration");
-							      DomainObject domObj = DomainObject.newInstance(context, busObjAchor);
-							      StringList slObjectSelect = new StringList();
-							      slObjectSelect.add("id");
-							      StringList slRelSelect = new StringList();
-							      slRelSelect.add(DomainRelationship.SELECT_ID);
-							      MapList manAssMapList = domObj.getRelatedObjects(context, 
-							          "LCD_SAPBOMInterface", 
-							          "*", 
-							          slObjectSelect, 
-							          slRelSelect, 
-							          false, 
-							          true, 
-							          (short)1,
-							          strBusWhere, 
-							          "", 
-							          0);
-							      Iterator<?> iterMAsMaplist = manAssMapList.iterator();
-							      while (iterMAsMaplist.hasNext()) {
-							        Map<?, ?> item = (Map<?, ?>)iterMAsMaplist.next();
-//							        strConnectionId = (String)item.get("id[connection]");
-							        strConnectionId = (String)item.get(DomainRelationship.SELECT_ID);
-							      }
-							
+			if (null != jWebServiceResponse && jWebServiceResponse.containsKey(HEADER_PART)) {
+				JsonObject joHeaderPart = jWebServiceResponse.getJsonObject(HEADER_PART);
+				if (null != joHeaderPart) {
+					String resultType = jWebServiceResponse.getString(TAG_TYPE);
+					if (UIUtil.isNotNullAndNotEmpty(resultType) && resultType.equalsIgnoreCase(FAIL)) {
+						String strErrorMessage = joHeaderPart.getString(TAG_ERROR_MESSAGE);
+						String strObjID = joHeaderPart.getString(TAG_OID);
+						String strObjTitle = joHeaderPart.getString(TAG_TITLE);
 
-							if (UIUtil.isNotNullAndNotEmpty(strObjID) && UIUtil.isNotNullAndNotEmpty(strErrorMessage)) {
-								sbfErrMes.append(strObjTitle + COLON_SEP + strErrorMessage + NEW_LINE);
-							}
+						strConnectionId = getConnectionId(context, strObjID);
 
-							JsonArray jArrayOfChildParts = joHeaderPart.getJsonArray(HEADER_CHILDREN);
-							if (null != jArrayOfChildParts) {
-								JsonObject jchildPart;
-								String strPartTitle;
-								String sErrorMessage;
-								for (int i = 0; i < jArrayOfChildParts.size(); i++) {
-									jchildPart = jArrayOfChildParts.getJsonObject(i);
-									strPartTitle = jchildPart.getString(TAG_TITLE);
-									sErrorMessage = jchildPart.getString(TAG_ERROR_MESSAGE);
+						if (UIUtil.isNotNullAndNotEmpty(strObjID) && UIUtil.isNotNullAndNotEmpty(strErrorMessage)) {
+							sbfErrMes.append(strObjTitle + COLON_SEP + strErrorMessage + NEW_LINE);
+						}
 
-									if (UIUtil.isNotNullAndNotEmpty(sErrorMessage)) {
-										sbfErrMes.append(strPartTitle).append(COLON_SEP).append(sErrorMessage).append(NEW_LINE);
-									}
-								}
-							}
-							DomainRelationship domRelMA = DomainRelationship.newInstance(context, strConnectionId);
-							
-							domRelMA.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_FAILED);
-							domRelMA.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE, sbfErrMes.toString());
+						JsonArray jArrayOfChildParts = joHeaderPart.getJsonArray(HEADER_CHILDREN);
+						if (null != jArrayOfChildParts) {
+							JsonObject jchildPart;
+							String strPartTitle;
+							String sErrorMessage;
+							for (int i = 0; i < jArrayOfChildParts.size(); i++) {
+								jchildPart = jArrayOfChildParts.getJsonObject(i);
+								strPartTitle = jchildPart.getString(TAG_TITLE);
+								sErrorMessage = jchildPart.getString(TAG_ERROR_MESSAGE);
 
-						} else if (UIUtil.isNotNullAndNotEmpty(resultType) && resultType.equalsIgnoreCase(SUCCESS)) {
-							String strObjID = joHeaderPart.getString(TAG_OID);
-							
-							if (UIUtil.isNotNullAndNotEmpty(strObjID)) {
-								DomainObject domObjBomComponent = new DomainObject(strObjID);
-								
-								domObjBomComponent.getExpansionIterator(context, null);
-								String strSAPUniqueID = joHeaderPart.getString(TAG_SAPUNIQUE_ID);
-								// Push context as no Manufacturing Assembly access to 3DXLeader in release
-								// state in respective policy.
-								try{
-										Date date = new Date();
-										ContextUtil.pushContext(context, PropertyUtil.getSchemaProperty(context, "person_UserAgent"), DomainConstants.EMPTY_STRING, DomainConstants.EMPTY_STRING);
-										
-										domObjBomComponent.setAttributeValue(context, ATTR_SAP_UNIQUEID, strSAPUniqueID);
-										domObjBomComponent.setAttributeValue(context, ATTR_SAPMBOM_UPDATED_ON, dateFormat.format(date));
-										
-										DomainRelationship domRel = DomainRelationship.newInstance(context, strConnectionId);
-										
-										domRel.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_COMPLETE);
-										domRel.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE, sbfErrMes.toString());
-										
-										ContextUtil.popContext(context);
-								} catch (Exception e) {
-									e.printStackTrace();
-									throw new Exception(e.getMessage());
+								if (UIUtil.isNotNullAndNotEmpty(sErrorMessage)) {
+									sbfErrMes.append(strPartTitle).append(COLON_SEP).append(sErrorMessage)
+											.append(NEW_LINE);
 								}
 							}
 						}
-					} 
-				}else {
-					throw new NullPointerException("Inavlid Response from SAP.");
+						DomainRelationship domRelMA = DomainRelationship.newInstance(context, strConnectionId);
+
+						domRelMA.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_FAILED);
+						domRelMA.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE, sbfErrMes.toString());
+
+					} else if (UIUtil.isNotNullAndNotEmpty(resultType) && resultType.equalsIgnoreCase(SUCCESS)) {
+						String strObjID = joHeaderPart.getString(TAG_OID);
+
+						if (UIUtil.isNotNullAndNotEmpty(strObjID)) {
+							DomainObject domObjBomComponent = new DomainObject(strObjID);
+
+							strConnectionId = getConnectionId(context, strObjID);
+
+							String strSAPUniqueID = joHeaderPart.getString(TAG_SAPUNIQUE_ID);
+							// Push context as no Manufacturing Assembly access to 3DXLeader in release
+							// state in respective policy.
+
+							Date date = new Date();
+							domObjBomComponent.setAttributeValue(context, ATTR_SAP_UNIQUEID, strSAPUniqueID);
+							domObjBomComponent.setAttributeValue(context, ATTR_SAPMBOM_UPDATED_ON,
+									dateFormat.format(date));
+
+							DomainRelationship domRel = DomainRelationship.newInstance(context, strConnectionId);
+
+							domRel.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, STATUS_COMPLETE);
+							domRel.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE, sbfErrMes.toString());
+
+						}
+					}
 				}
-			}else {
-				throw new NullPointerException("Empty from Response from SAP.");
 			}
+
 			System.out.println(">>>>>LCDSAPIntegrationCallFromSAP---sendFailedDataToSap()-----ENDED");
-			res = Response.ok(MSG_SUCCESS).type(MediaType.TEXT_PLAIN).build();		
-			} catch (Exception e) {
-				throw new NullPointerException(e.getMessage());
-		} 
+			res = Response.ok(MSG_SUCCESS).type(MediaType.TEXT_PLAIN).build();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			if (isContextPushed) {
+				ContextUtil.popContext(context);
+			}
+		}
 		return res;
 	}
+
+	private String getConnectionId(Context context, String strObjID) throws MatrixException {
+		String strConnectionId = "";
+		String strBusWhere = "id==\"" + strObjID + "\"";
+		BusinessObject busObjAchor = new BusinessObject(TYPE_LCD_BOM_ANCHOR_OBJECT, NAME_LCD_ANCHOR_OBJECT,
+				REV_LCD_ANCHOR_OBJECT, VAULT_ESERVICE_PRODUCTION);
+		DomainObject domObj = DomainObject.newInstance(context, busObjAchor);
+		StringList slObjectSelect = new StringList();
+		slObjectSelect.add(DomainConstants.SELECT_ID);
+		StringList slRelSelect = new StringList();
+		slRelSelect.add(DomainRelationship.SELECT_ID);
+		MapList manAssMapList = domObj.getRelatedObjects(context, REL_LCD_SAP_BOM_INTERFACE, "*", slObjectSelect,
+				slRelSelect, false, true, (short) 1, strBusWhere, "", 0);
+		Iterator<?> iterMAsMaplist = manAssMapList.iterator();
+		while (iterMAsMaplist.hasNext()) {
+			Map<?, ?> item = (Map<?, ?>) iterMAsMaplist.next();
+			strConnectionId = (String) item.get(DomainRelationship.SELECT_ID);
+		}
+		return strConnectionId;
+	}
+
 }

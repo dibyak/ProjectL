@@ -51,6 +51,7 @@ public class LCDSAPIntegrationPushToSAPServices extends RestService {
 
 	private static final String JPO_LCD_3DXSAP_INTEGRATION_SCHEDULER = "LCD_3DXSAPIntegrationScheduler";
 	private static final String METHOD_REPUSH_FAILED_BOM_COMPONENTS_TO_SAP = "rePushFailedBomComponentsToSAP";
+	public static final String MSG_NETWORK_FAILURE = "Network Failure";
 
 	/**
 	 * Method
@@ -96,9 +97,6 @@ public class LCDSAPIntegrationPushToSAPServices extends RestService {
 			if (bomName.equals("") || bomName.isEmpty()) {
 				throw new NullPointerException();
 			}
-			if (caId.equals("") || caId.isEmpty()) {
-				throw new NullPointerException();
-			}
 
 			DomainRelationship domRelBomConnectedToAnchorObj = DomainRelationship.newInstance(context, connectionId);
 
@@ -132,9 +130,22 @@ public class LCDSAPIntegrationPushToSAPServices extends RestService {
 						JsonObjectBuilder jobRes = Json.createObjectBuilder();
 						jobRes.add(KEY_STATUS, KEY_SUCCESS);
 						jobRes.add(KEY_RESPONSE, strResponse);
+						jobRes.add(KEY_BOM_NAME, bomName);
 
 						res = Response.ok(jobRes.build().toString()).type(MediaType.APPLICATION_JSON).build();
-					} else {
+					} else if(strResponse.equalsIgnoreCase(MSG_NETWORK_FAILURE)) {
+						domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG,
+								STATUS_FAILED);
+						domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
+								MSG_NETWORK_FAILURE);
+						JsonObjectBuilder jobRes = Json.createObjectBuilder();
+						jobRes.add(KEY_STATUS, STATUS_FAILED);
+						jobRes.add(KEY_RESPONSE, strResponse);
+						jobRes.add(KEY_BOM_NAME, bomName);
+
+						res = Response.ok(jobRes.build().toString()).type(MediaType.APPLICATION_JSON).build();
+					}
+					else {
 						domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG,
 								STATUS_FAILED);
 						domRelBomConnectedToAnchorObj.setAttributeValue(context, ATTR_LCD_REASON_FOR_FAILURE,
