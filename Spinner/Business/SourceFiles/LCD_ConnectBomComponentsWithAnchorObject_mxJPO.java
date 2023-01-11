@@ -15,6 +15,7 @@ import com.matrixone.apps.domain.DomainConstants;
 import com.matrixone.apps.domain.DomainObject;
 import com.matrixone.apps.domain.DomainRelationship;
 import com.matrixone.apps.domain.util.PropertyUtil;
+import com.matrixone.apps.framework.ui.UIUtil;
 
 import matrix.db.BusinessObject;
 import matrix.db.Context;
@@ -40,13 +41,13 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 	private static final String TYPE_ELECTRICALGEOMETRY = "ElectricalGeometry";
 	private static final String TYPE_PIPING_RIGID_PIPE = "Piping_Rigid_Pipe";
 	private static final String TYPE_SPOTFASTENERSINGLE = "SpotFastenerSingle";
-	private static final String TYPE_LCD_BOM_ANCHOR_OBJECT = "LCD_BOMAnchorObject";
 
 	private static final String DESCRETE = "Make";
 	private static final String SUBCONTRACT = "Sub-Contract";
 	private static final String FALSE = "FALSE";
 	private static final String VALUE_STATUS_WAITING = "Waiting";
 
+	private static final String TYPE_LCD_BOM_ANCHOR_OBJECT = "LCD_BOMAnchorObject";
 	private static final String NAME_LCD_ANCHOR_OBJECT = "LCD_AnchorObject";
 	private static final String REV_LCD_ANCHOR_OBJECT = "A";
 	private static final String VAULT_ESERVICE_PRODUCTION = "eService Production";
@@ -71,10 +72,8 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 	 */
 	public void connectManAssemblyToAnchorObject(Context context, String[] args) throws Exception {
 
+		try {
 		String strCAId = args[0];
-
-		ChangeAction changeActionObj = ChangeActionServices.getChangeAction(context, strCAId);
-
 		BusinessObject busObjAchor = new BusinessObject(TYPE_LCD_BOM_ANCHOR_OBJECT, // String Type
 				NAME_LCD_ANCHOR_OBJECT, // String Name
 				REV_LCD_ANCHOR_OBJECT, // String Revision
@@ -82,7 +81,9 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 		
 		if(busObjAchor.exists(context)) {
 
-		DomainObject domObjAnchor = DomainObject.newInstance(context, busObjAchor);
+		DomainObject domObjAnchor = DomainObject.newInstance(context, busObjAchor.getObjectId(context));
+		
+		ChangeAction changeActionObj = ChangeActionServices.getChangeAction(context, strCAId);
 
 		ChangeActionFacets changeActionFacetsSelectables = new ChangeActionFacets();
 		changeActionFacetsSelectables.attributes = true;
@@ -91,39 +92,41 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 		String strCAJsonDetails = ChangeActionJsonUtilities.changeActionToJson(context, changeActionObj,
 				changeActionFacetsSelectables);
 
-		try (JsonReader jsonReadCADetails = Json.createReader(new StringReader(strCAJsonDetails));) {
+			JsonReader jsonReadCADetails = Json.createReader(new StringReader(strCAJsonDetails));
 			JsonObject jsonObjChangeAction = jsonReadCADetails.readObject();
 			JsonArray jsonArrRealizedItems = jsonObjChangeAction.getJsonObject(KEY_CA).getJsonArray(KEY_REALIZED);
+			jsonReadCADetails.close();
 
-			if (!jsonArrRealizedItems.isEmpty()) {
+			if (jsonArrRealizedItems != null) {
 				for (int i = 0; i < jsonArrRealizedItems.size(); i++) {
 					JsonObject jsonObjRealizedItem = jsonArrRealizedItems.getJsonObject(i);
 					String strRealizedItemType = jsonObjRealizedItem.getJsonObject(KEY_CA_WHERE)
 							.getJsonObject(KEY_CA_INFO).getString(KEY_CA_TYPE);
 					String realizedItemId = jsonObjRealizedItem.getJsonObject(KEY_CA_WHERE).get(KEY_CA_ID).toString()
 							.split(":")[1].replace("\"", "");
+					if(UIUtil.isNotNullAndNotEmpty(realizedItemId)) {
+						DomainObject domObjRealizedItem = DomainObject.newInstance(context, realizedItemId);
+						StringList slObjectSelects = new StringList();
+						slObjectSelects.add(DomainConstants.SELECT_ID);
 
-					DomainObject domObjRealizedItem = DomainObject.newInstance(context, realizedItemId);
-					StringList slObjectSelects = new StringList();
-					slObjectSelects.add(DomainConstants.SELECT_ID);
-					slObjectSelects.add(ATTR_PROCUREMENT_INTENT_MFG_ASMBLY);
-					slObjectSelects.add(ATTR_HAS_CONFIG_CONTEXT_VPMREFERENCE);
+						Map<?, ?> realizedItemMap = domObjRealizedItem.getInfo(context, slObjectSelects);
+						String strRealizedID = (String) realizedItemMap.get(DomainConstants.SELECT_ID);
 
-					Map<?, ?> realizedItemMap = domObjRealizedItem.getInfo(context, slObjectSelects);
-					String strRealizedID = (String) realizedItemMap.get(DomainConstants.SELECT_ID);
-
-					if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strRealizedItemType)) {
-						DomainRelationship relEbom = domObjAnchor.addRelatedObject(context,
-								new RelationshipType(REL_LCD_SAP_BOM_INTERFACE), false, strRealizedID);
-						relEbom.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, VALUE_STATUS_WAITING);
-						relEbom.setAttributeValue(context, ATTR_LCD_CAID, strCAId);
+						if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strRealizedItemType)) {
+							DomainRelationship relEbom = domObjAnchor.addRelatedObject(context,
+									new RelationshipType(REL_LCD_SAP_BOM_INTERFACE), false, strRealizedID);
+							relEbom.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, VALUE_STATUS_WAITING);
+							relEbom.setAttributeValue(context, ATTR_LCD_CAID, strCAId);
+						}
 					}
-
 				}
 			}
 		}
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw e;
 		}
-	}
+		}
 
 	/**
 	 * Method to connect CAD Part to Anchor object. Invoked from CAD Part-Promote
@@ -134,11 +137,12 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 	 * @throws Exception when operation fails
 	 */
 	public void connectPhysicalProductToAnchorObject(Context context, String[] args) throws Exception {
-
+		System.out.println("connectPhysicalProductToAnchorObject-----START");
+		try {
 		String strObjectId = args[0];
 		String strNextState = args[1];
 
-		if(strNextState.equalsIgnoreCase(POLICY_VPLM_SMB_DEFINITION_STATE_RELEASED)) {
+		if(POLICY_VPLM_SMB_DEFINITION_STATE_RELEASED.equalsIgnoreCase(strNextState)) {
 			DomainObject domObjCadPart = DomainObject.newInstance(context, strObjectId);
 
 			BusinessObject busObjAchor = new BusinessObject(TYPE_LCD_BOM_ANCHOR_OBJECT, // String Type
@@ -148,7 +152,7 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 			
 			if(busObjAchor.exists(context)) {
 
-			DomainObject domObjAnchor = DomainObject.newInstance(context, busObjAchor);
+			DomainObject domObjAnchor = DomainObject.newInstance(context, busObjAchor.getObjectId(context));
 
 			StringList slObjectSelects = new StringList();
 			slObjectSelects.add(DomainConstants.SELECT_ID);
@@ -172,6 +176,12 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 
 			}
 		}
+			
 		}
+	}catch (Exception e) {
+		e.printStackTrace();
+		throw e;
 	}
+		}
+	
 }
