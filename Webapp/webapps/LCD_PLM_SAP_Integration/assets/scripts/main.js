@@ -1371,47 +1371,39 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 @item-selected="methodToDisableRepushBtnOnSelect"
                 @toggle-select-all="methodToDisableRepushBtnOnSelectAll"
               >
-              <!-- <template v-slot:item.caCompletedTime="{ item }">
-                <div class="col-8 text-truncate">
-                {{item.caCompletedTime}}
-                </div>
-                </template> -->
                 <template v-slot:item.status="{ item }">
                   <v-chip :color="getStatusColor(item.status)">
                     {{ item.status }}
                   </v-chip>
                 </template>
                 <template v-slot:header.BOMComponentName="{ header }">
-                  {{ header.text }}
-                  <v-menu offset-y :close-on-content-click="false">
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="BOMComponentName ? 'primary' : ''">
-                          mdi-magnify-expand
-                        </v-icon>
-                      </v-btn>
-                    </template>
-                    <div style="background-color: white; width: 250px">
-                      <v-text-field
-                        id="colfilter"
-                        full-width
-                        placeholder="Enter the search term"
-                        v-model="BOMComponentName"
-                        class="pa-4"
-                        type="text"
-                        :autofocus="true"
-                      ></v-text-field>
-                      <v-btn
-                        @click="BOMComponentName = ''"
-                        small
-                        text
-                        color="primary"
-                        class="ml-2 mb-2"
-                        >Clean</v-btn
-                      >
-                    </div>
-                  </v-menu>
-                </template>
+            {{ header.text }}
+            <v-menu offset-y :close-on-content-click="false" >
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn icon v-bind="attrs" v-on="on">
+                  <v-icon small :color="BOMComponentName ? 'primary' : ''">
+                    mdi-magnify-expand
+                  </v-icon>
+                </v-btn>
+              </template>
+              <div style="background-color: white; width: 280px" >
+                <v-text-field
+                  v-model="BOMComponentName"
+                  class="pa-4 "
+                  type="text"
+                  label="Enter the search term"
+                  :autofocus="true"
+                ></v-text-field>
+                <v-btn
+                  @click="BOMComponentName = ''"
+                  small
+                  text
+                  color="primary"
+                  class="ml-2 mb-2"
+                >Clean</v-btn>
+              </div>
+            </v-menu>
+          </template>
                 <template v-slot:header.status="{ header }">
                   {{ header.text }}
                   <v-menu offset-y :close-on-content-click="false">
@@ -1532,36 +1524,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                     </div>
                   </v-menu>
                 </template>
-                <template v-slot:header.caName="{ header }">
-                  {{ header.text }}
-                  <v-menu offset-y :close-on-content-click="false">
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn icon v-bind="attrs" v-on="on">
-                        <v-icon small :color="caName ? 'primary' : ''">
-                          mdi-magnify-expand
-                        </v-icon>
-                      </v-btn>
-                    </template>
-                    <div style="background-color: white; width: 280px">
-                      <v-text-field
-                        v-model="caName"
-                        class="pa-4"
-                        type="text"
-                        full-width
-                        placeholder="Enter the search term"
-                        :autofocus="true"
-                      ></v-text-field>
-                      <v-btn
-                        @click="caName = ''"
-                        small
-                        text
-                        color="primary"
-                        class="ml-2 mb-2"
-                        >Clean</v-btn
-                      >
-                    </div>
-                  </v-menu>
-                </template>
+                
                 <template v-slot:header.description="{ header }">
                   {{ header.text }}
                   <v-menu offset-y :close-on-content-click="false">
@@ -1622,6 +1585,37 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                     </div>
                   </v-menu>
                 </template>
+                <template v-slot:header.caName="{ header }">
+                  {{ header.text }}
+                  <v-menu offset-y :close-on-content-click="false">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-btn icon v-bind="attrs" v-on="on">
+                        <v-icon small :color="caName ? 'primary' : ''">
+                          mdi-magnify-expand
+                        </v-icon>
+                      </v-btn>
+                    </template>
+                    <div style="background-color: white; width: 280px">
+                      <v-text-field
+                        v-model="caName"
+                        class="pa-4"
+                        type="text"
+                        full-width
+                        placeholder="Enter the search term"
+                        :autofocus="true"
+                      ></v-text-field>
+                      <v-btn
+                        @click="caName = ''"
+                        small
+                        text
+                        color="primary"
+                        class="ml-2 mb-2"
+                        >Clean</v-btn
+                      >
+                    </div>
+                  </v-menu>
+                </template>
+
               </v-data-table>
             </v-container>
           </v-sheet>
@@ -2117,6 +2111,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               });
             });
             myWidget.webserviceForRepush();
+            this.failedStatus = false;
+            this.snackbarMsg = [];
           },
           clear() {
             this.arrFilterData = this.BOMComponentsReceivedFromWS;
