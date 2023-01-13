@@ -37,6 +37,7 @@ tr:nth-child(even) {
   color: white;
 }
 #searchbtn {
+  display: block !important;
   border-radius: 11px;
   /* margin: 0% 0% 0% 18%; */
   /* background-color: #EEEEEE !important; */
@@ -178,6 +179,9 @@ h1{
   display: inline;
   left: 82%;
   top: 5%;
+}
+.space{
+  margin-left: 22px;
 }
 /* .v-snack--top{
   top:5%;

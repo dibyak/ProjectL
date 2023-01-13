@@ -3,8 +3,6 @@
 	"failed": "Failed",
 	"inWork": "In Work",
 	"waiting": "Waiting",
-	"caCompletedTime":"caCompletedTime",
-	"sno":"sno",
 	"rePushWebserviceResponceMessage_success": "JSON Format Validation Completed",
 	"rePushWebserviceResponceMessage_failed": "JSON Format Validation Failed",
 	"headersForAllInOneTab": [{
