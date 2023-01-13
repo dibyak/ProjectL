@@ -1,0 +1,8 @@
+{
+    "headers": [
+        { "text": "Level", "value": "level", "class": "levelClass" },
+        { "text": "Top Node Name", "value": "topNodeName" },
+        { "text": "Top Node Title", "value": "topNodeTitle" },
+        { "text": "Navigation", "value": "nodeMapArr", "class": "navClass" }
+      ]
+}

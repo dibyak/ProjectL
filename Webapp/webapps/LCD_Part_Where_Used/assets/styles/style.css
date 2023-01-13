@@ -1,0 +1,58 @@
+table > thead > tr > th {
+  background-color: #005685;
+  color: #fff !important;
+  min-width: 180px;
+  height: 44px !important;
+}
+.navClass {
+  width: 1200px;
+}
+.levelClass {
+  min-width: 125px;
+  width: 125px !important;
+}
+.v-data-table-header__icon {
+  color: #f5f5f5 !important;
+}
+table > thead > tr > th:hover {
+  color: #78befa !important;
+}
+.container {
+  max-width: none;
+}
+.title {
+  background: #eceff1;
+  color: rgb(78, 77, 77);
+  border: 1px solid grey;
+  border-radius: 5px;
+  min-width: 100%;
+  line-height: 3rem !important;
+  text-align: center;
+  margin: 2px;
+}
+.v-card__title {
+  width: 25%;
+  margin: auto;
+}
+@media screen and (max-width: 1500px) {
+  .v-card__title {
+    width: 50%;
+  }
+}
+@media screen and (max-width: 800px) {
+  .v-card__title {
+    width: 80%;
+  }
+}
+.v-application .title {
+  font-size: 1.5rem !important;
+}
+.v-input .v-label {
+  top: auto;
+}
+.v-text-field--outlined > .v-input__control > .v-input__slot {
+  min-height: 45px;
+}
+.v-text-field--outlined .v-input__append-outer {
+  margin-top: 12px;
+}

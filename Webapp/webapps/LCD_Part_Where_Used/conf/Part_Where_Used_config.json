@@ -1,0 +1,9 @@
+{
+    "bomData": [
+        {
+          "type": "VPMReference",
+          "name": "prd-atieva-01910643",
+          "revision": "1.1"
+        }
+      ]
+}
