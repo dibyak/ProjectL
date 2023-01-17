@@ -56,3 +56,13 @@ table > thead > tr > th:hover {
 .v-text-field--outlined .v-input__append-outer {
   margin-top: 12px;
 }
+.module a:link {
+  color: #1976d2;
+}
+.module a:visited {
+  color: #005685;
+}
+.v-data-table__wrapper {
+  max-height: 525px;
+  overflow-y: auto;
+}

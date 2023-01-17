@@ -18,7 +18,7 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
 ) {
   Vue.use(Vuetify, {});
   var myWidget = {
-    _3dashboardUrl: "",
+    _3dashboardUrl: widget.widgetDomain,
     _3dspaceUrl: "",
     onLoad: function () {
       var apps = PlatformAPI.getAllApplicationConfigurations();
@@ -226,11 +226,16 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
             </template>
     
             <template v-slot:item.nodeMapArr="{ item }">
-              <span v-for="i in item.nodeMapArr" :key="i.PartId">
+              <span v-for="(i,index) in item.nodeMapArr" :key="i.PartId">
                 <a target="_blank" :href="i.PartId">
                   {{ i.PartTitle }}
                 </a>
-                {{ getArrows(item.nodeMapArr, i) }}
+                <span v-if="item.nodeMapArr.length > index + 1">
+                  {{ " → " }}
+                </span>
+              </span>
+              <span v-if="item.nodeMapArr.length == 0">
+                Not Present 
               </span>
             </template>
           </v-data-table>
@@ -280,60 +285,70 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
         methods: {
           sendRequest() {
             if (this.search.trim().length > 0) {
+              this.result = [];
               this.loadingStatus = true;
-              let message = {
-                partTitle: this.search.trim(), //V21-B01030-00
-                bomData: widget.getValue("bomData"),
-              };
-              let _this = this;
-              WAFData.authenticatedRequest(
-                _3dspaceUrl +
-                  Part_Where_Used_webservicedetails.getPartWhereUsedData,
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  data: JSON.stringify(message),
-                  accept: "application/json",
-                  onComplete: (res) => {
-                    let result = JSON.parse(res);
-                    _this.result = _this.formatUrl(result.data);
-                    _this.loadingStatus = false;
-                  },
-                  onFailure: (err) => {
-                    console.log(err);
-                    _this.loadingStatus = false;
-                  },
-                }
-              );
+              let reqNo = 0;
+              let bomDataArr = widget.getValue("bomData");
+              bomDataArr.forEach((bomData) => {
+                let message = {
+                  partTitle: this.search.trim(), //V21-B01030-00
+                  bomData: bomData,
+                };
+                let _this = this;
+                reqNo += 1;
+                WAFData.authenticatedRequest(
+                  _3dspaceUrl +
+                    Part_Where_Used_webservicedetails.getPartWhereUsedData,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    data: JSON.stringify(message),
+                    accept: "application/json",
+                    timeout: 200000,
+                    onComplete: (res) => {
+                      let formatedData = _this.formatUrl(JSON.parse(res));
+                      _this.result = _this.result.concat(formatedData);
+                      reqNo -= 1;
+                      if (reqNo === 0) _this.loadingStatus = false;
+                    },
+                    onFailure: (err) => {
+                      console.log(err);
+                      reqNo -= 1;
+                      if (reqNo === 0) _this.loadingStatus = false;
+                    },
+                  }
+                );
+              });
             } else {
               this.snackbar = true;
               this.snackbartext = "Please enter part title";
             }
           },
-          getArrows(nodeMapArr, nodeMap) {
-            if (nodeMapArr.length > 0)
-              return nodeMap.PartId !== nodeMapArr[nodeMapArr.length - 1].PartId
-                ? " → "
-                : "";
-          },
+          // getArrows(nodeMapArr, nodeMap) {
+          //   if (nodeMapArr.length > 0) {
+          //     return nodeMap.sPartId !==
+          //       nodeMapArr[nodeMapArr.length - 1].sPartId
+          //       ? " → "
+          //       : "";
+          //   }
+          // },
           formatUrl(data) {
-            let _3dashboardUrl =
-              "https://sjc01en3apapd01.corp.lucid.lcl:446/3DDashboard";
+            // let _3dashboardUrl =
+            //   "https://sjc01en3apapd01.corp.lucid.lcl:446/3DDashboard";
             data.forEach((obj) => {
               if (obj.nodeMapArr.length > 0) {
                 obj.nodeMapArr.forEach((nodeMap) => {
                   let asIsUrl =
-                    _3dashboardUrl + "/#app:ENOSCEN_AP/content:X3DContentId=";
+                    myWidget._3dashboardUrl +
+                    "/#app:ENOSCEN_AP/content:X3DContentId=";
                   let urlToEncode =
                     '{"data":{"items":[{"objectId":"' +
                     nodeMap.PartId +
                     '","objectType":"VPMReference","envId":"OnPremise","serviceId":"3DSpace"}]}}';
                   nodeMap.PartId = asIsUrl + encodeURIComponent(urlToEncode);
                 });
-              } else {
-                obj.nodeMapArr = "Not Present";
               }
             });
             return data;
@@ -352,7 +367,18 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
               .includes(this.searchTopNodeTitle.toLowerCase());
           },
           filterNavigation(item) {
-            return item.navigation
+            // return item.nodeMapArr
+            //   .toLowerCase()
+            //   .includes(this.searchNavigation.toLowerCase());
+
+            let filterData = "Not Present";
+            if (item.nodeMapArr.length > 0) {
+              filterData = item.nodeMapArr.reduce(
+                (one, two) => (one += two.PartTitle + ","),
+                ""
+              );
+            }
+            return filterData
               .toLowerCase()
               .includes(this.searchNavigation.toLowerCase());
           },
@@ -360,6 +386,5 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
       });
     },
   };
-  // widget.myWidget = myWidget;
   return myWidget;
 });
