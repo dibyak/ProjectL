@@ -35,6 +35,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
     webserviceToGetAllBOMComponents: function () {
       var _this = this;
       // WAFData.authenticatedRequest(_3dspaceUrl + '/LCDSAPIntegrationModeler/LCDSAPIntegrationService/getMA',
+      // WAFData.authenticatedRequest(_3dspaceUrl + '/LCDSAPIntegrationModeler/lcdSAPIntegrationServices/getSAPTransferDetailsOfAnchoredAssemblies',
       WAFData.authenticatedRequest(_3dspaceUrl + widget.getValue("webserviceURLToGetAllBOMComponents"),
         {
           method: "GET",
@@ -52,11 +53,10 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       );
     },
     webserviceForRepush: async function () {
-      debugger;
       var _this = this;
     
       for (let i = 0; i < _this.vueapp.selected.length; i++) {
-        var Ca_ID = _this.vueapp.selected[i].caID;
+        var Ca_ID = _this.vueapp.selected[i].CAID;
         var BOM_Comp_ID = _this.vueapp.selected[i].BOMComponentID;
         var ma_name = _this.vueapp.selected[i].BOMComponentName;
         var Connection_ID = _this.vueapp.selected[i].ConnectionID;
@@ -64,7 +64,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           CAID: Ca_ID,
           BOMComponentID: BOM_Comp_ID,
           ConnectionID: Connection_ID,
-          BOMName: ma_name,
+          BOMComponentName: ma_name,
         };
        await myWidget
           .methodToCallRepushWS(data_to_be_Send_from_UI)
@@ -77,7 +77,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
 
             // _this.vueapp.snackbarMsg.push(_this.vueapp.selected[i].BOMComponentName);
             // console.log("MYJSON -->" + myWidget.jsonResponse);
-            if (_this.vueapp.snackbarMsg[i].status == "Success") {
+            if (_this.vueapp.snackbarMsg[i].status == "SUCCESS") {
               _this.vueapp.snackbarColor = "success";
               _this.vueapp.snackbarIcon = "mdi-check-circle";
               _this.vueapp.snackbar = true;
@@ -132,6 +132,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         try {
           WAFData.authenticatedRequest(
             _3dspaceUrl + widget.getValue("webserviceURLForRepush"),
+            // WAFData.authenticatedRequest(_3dspaceUrl + '/LCDSAPIntegrationModeler/lcdSAPIntegrationServices/pushAssemblyToSAP',
             {
               method: "POST",
               accept: "application/json",
@@ -148,6 +149,21 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               },
               onFailure: function (error) {
                 console.log( "--------> ERROR ON WEBSERVICE FAILURE " +error);
+                _this.vueapp.snackbarColor = "error";
+                _this.vueapp.snackbarIcon = "mdi-close-circle";
+                _this.vueapp.snackbarMsg.push("Something went wrong.");
+                // console.log(_this.vueapp.snackbarMsg);
+                _this.vueapp.snackbar = true;
+    
+                _this.vueapp.SearchMethod.map((x) => {
+                  _this.vueapp.selected.map((y) => {
+                    if (x.BOMComponentID == y.BOMComponentID) {
+                      x.status = PLM_SAP_Integration_nls.failed;
+                      x.SapFeedbackMessage =
+                        PLM_SAP_Integration_nls.rePushWebserviceResponceMessage_failed;
+                    }
+                  });
+                });
                 reject();
               },
             }
@@ -159,7 +175,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
     },
     webserviceToExportPartData: function () {
       var _this = this;
-      var Ca_ID = _this.vueapp.selected[0].caID;
+      var Ca_ID = _this.vueapp.selected[0].CAID;
       var BOM_Comp_ID = _this.vueapp.selected[0].BOMComponentID;
       var Connection_ID = _this.vueapp.selected[0].ConnectionID;
       var BOM_Comp_Name = _this.vueapp.selected[0].BOMComponentName;
@@ -169,6 +185,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         ConnectionID: Connection_ID,
         BOMComponentName : BOM_Comp_Name
       };
+      // console.log( "dataTobeSendfromUI------------------"+ JSON.stringify(dataTobeSendfromUI));
       WAFData.authenticatedRequest(
         _3dspaceUrl + widget.getValue("webserviceURLToExportPartData"),
         {
@@ -195,7 +212,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           },
         }
       );
-      _this.vueapp.selected = [];
+      // _this.vueapp.selected = [];
     },
 
     loadData: function () {
@@ -212,7 +229,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       <v-container>
       <div class="snackbar_div">
         <v-snackbar v-model="snackbar" v-for="item in snackbarMsg" :key="item" :color="snackbarColor" top right :timeout="4000">
-          <p><v-icon>{{snackbarIcon}}</v-icon>Name : {{item.BOMName}}<br><span class="space">Status : {{item.status}}</span></p>
+          <p><v-icon>{{snackbarIcon}}</v-icon>Name : {{item.BOMComponentName}}<br><span class="space">Status : {{item.status}}</span></p>
           <template v-slot:action="{ attrs }">
           <v-btn
             text
@@ -262,14 +279,12 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               <v-app-bar class="ma-5" color="white" flat>
                   <v-btn
                     depressed
-                    color="primary"
                     class="buttons"
-                    @click="export_table_to_csv_method"
+                    @click="export_table_to_csv_method(methodToAddSrNoInWaitingTable)"
                     >Export table to CSV
                   </v-btn>
                   <v-btn
                     depressed
-                    color="primary"
                     class="buttons"
                     @click="export_part_data"
                     :disabled="!(selected.length == 1)"
@@ -293,7 +308,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 </v-text-field>
                 <v-btn
                       depressed
-                      color="primary"
                       class="buttons"
                       @click="searchTable"
                       id="searchbtn"
@@ -305,6 +319,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                   v-model="selected"
                   :headers="headersForSeperateTab"
                   :items="methodToAddSrNoInWaitingTable"
+                  :items-per-page="-1"
                   item-key="BOMComponentName"
                   :search="search"
                   fixed-header
@@ -618,14 +633,12 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               <v-app-bar class="ma-5" color="white" flat>
               <v-btn
                     depressed
-                    color="primary"
                     class="buttons"
-                    @click="export_table_to_csv_method"
+                    @click="export_table_to_csv_method(methodToAddSrNoInInWorkTable)"
                     >Export table to CSV
                   </v-btn>
                   <v-btn
                     depressed
-                    color="primary"
                     class="buttons"
                     @click="export_part_data"
                     :disabled="!(selected.length == 1)"
@@ -649,7 +662,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 </v-text-field>
                     <v-btn
                       depressed
-                      color="primary"
                       class="buttons"
                       @click="searchTable"
                       id="searchbtn"
@@ -662,6 +674,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                   v-model="selected"
                   :headers="headersForSeperateTab"
                   :items="methodToAddSrNoInInWorkTable"
+                  :items-per-page="-1"
                   item-key="BOMComponentName"
                   :search="search"
                   fixed-header
@@ -975,14 +988,12 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               <v-app-bar class="ma-5" color="white" flat>
               <v-btn
                     depressed
-                    color="primary"
                     class="buttons"
-                    @click="export_table_to_csv_method"
+                    @click="export_table_to_csv_method(methodToAddSrNoInCompleteTable)"
                     >Export table to CSV
                   </v-btn>
                   <v-btn
                     depressed
-                    color="primary"
                     class="buttons"
                     @click="export_part_data"
                     :disabled="!(selected.length == 1)"
@@ -1006,7 +1017,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 </v-text-field>
                     <v-btn
                       depressed
-                      color="primary"
                       class="buttons"
                       @click="searchTable"
                       id="searchbtn"
@@ -1018,6 +1028,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                   v-model="selected"
                   :headers="headersForSeperateTab"
                   :items="methodToAddSrNoInCompleteTable"
+                  :items-per-page="-1"
                   item-key="BOMComponentName"
                   :search="search"
                   fixed-header
@@ -1333,20 +1344,17 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               <v-app-bar class="ma-5" color="white" flat>
                     <v-btn class="buttons" @click="rePushToSAPMethod"
                     depressed
-                    color="primary"
                     :disabled="!failedStatus">
                     Re push to SAP
                     </v-btn>
                 <v-btn
                 depressed
-                color="primary"
                 class="buttons"
-                @click="export_table_to_csv_method"
+                @click="export_table_to_csv_method(methodToAddSrNoInFailedTable)"
                 >Export table to CSV
               </v-btn>
               <v-btn
                 depressed
-                color="primary"
                 class="buttons"
                 @click="export_part_data"
                 :disabled="!(selected.length == 1)"
@@ -1370,7 +1378,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 </v-text-field>
                     <v-btn
                       depressed
-                      color="primary"
                       class="buttons"
                       @click="searchTable"
                       id="searchbtn"
@@ -1385,6 +1392,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                   v-model="selected"
                   :headers="headersForSeperateTab"
                   :items="methodToAddSrNoInFailedTable"
+                  :items-per-page="-1"
                   item-key="BOMComponentName"
                   :search="search"
                   fixed-header
@@ -1699,21 +1707,18 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             <v-sheet class="overflow-y-auto" max-height="800">
               <v-app-bar class="ma-5" color="white" flat>
                     <v-btn class="buttons" @click="rePushToSAPMethod"
-                    color="primary"
                     depressed
                     :disabled="!failedStatus">
                     Re-push to SAP
                     </v-btn>
                     <v-btn
                       depressed
-                      color="primary"
                       class="buttons"
-                      @click="export_table_to_csv_method"
+                      @click="export_table_to_csv_method(methodToAddSrNoInAllTab)"
                       >Export table to CSV
                     </v-btn>
                     <v-btn
                       depressed
-                      color="primary"
                       class="buttons"
                       @click="export_part_data"
                       :disabled="!(selected.length == 1)"
@@ -1738,7 +1743,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 </v-text-field>
                     <v-btn
                       depressed
-                      color="primary"
                       class="buttons"
                       @click="searchTable"
                       id="searchbtn"
@@ -1752,6 +1756,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               v-model="selected"
               :headers="headersForAllInOneTab"
               :items="methodToAddSrNoInAllTab"
+              :items-per-page="-1"
               item-key="BOMComponentName"
               :search="search"
               fixed-header
@@ -1760,8 +1765,8 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               elevation="8"
               checkbox-color="teal lighten-2"
               resizable="true"
-              must-sort
               :custom-sort="methodtodoCustomSortinTable"
+              must-sort
               @item-selected="methodToDisableRepushBtnOnSelect"
               @toggle-select-all="methodToDisableRepushBtnOnSelectAll"
             >
@@ -2240,36 +2245,42 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               this.failedStatus = false;
             }
           },
-          methodtodoCustomSortinTable: function (items, index, isDesc) {
-            items.sort((a, b) => {
-              if (index[0] == PLM_SAP_Integration_nls.caCompletedTime) {
-                if (!isDesc[0]) {
-                  return new Date(b[index]) - new Date(a[index]);
-                } else {
-                  return new Date(a[index]) - new Date(b[index]);
-                }
-              } else if (index[0] == PLM_SAP_Integration_nls.sno) {
-                if (!isDesc[0]) {
-                  return b[index] - a[index];
-                } else {
-                  return a[index] - b[index];
-                }
-              } else {
-                if (typeof a[index] != "undefined") {
-                  if (!isDesc[0]) {
-                    return a[index]
-                      .toLowerCase()
-                      .localeCompare(b[index].toLowerCase());
-                  } else {
-                    return b[index]
-                      .toLowerCase()
-                      .localeCompare(a[index].toLowerCase());
+            methodtodoCustomSortinTable: function(items, index, isDesc) {
+              items.sort((a, b) => {
+                  if (index[0]=='caCompletedTime') {
+                    if (!isDesc[0]) {
+                        return new Date(b[index]) - new Date(a[index]);
+                    } else {
+                        return new Date(a[index]) - new Date(b[index]);
+                    }
                   }
-                }
-              }
-            });
-            return items;
-          },
+                  else if (index[0] == 'sno') {
+                    if (!isDesc[0]) {
+                      return b[index] - a[index];
+                    } else {
+                      return a[index] - b[index];
+                    }
+                  }
+                  else if (index[0] == 'SapFeedbackTimeStamp') {
+                    if (!isDesc[0]) {
+                      return b[index] - a[index];
+                    } else {
+                      return a[index] - b[index];
+                    }
+                  } 
+                  else {
+                    if(typeof a[index] !== 'undefined'){
+                      if (!isDesc[0]) {
+                         return a[index].toLowerCase().localeCompare(b[index].toLowerCase());
+                      }
+                      else {
+                          return b[index].toLowerCase().localeCompare(a[index].toLowerCase());
+                      }
+                    }
+                  }
+              });
+              return items;
+            },
           download_csv_of_tabledata(csv, filename) {
             var csvFile;
             var downloadLink;
@@ -2290,26 +2301,26 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
 
             downloadLink.click();
           },
-          export_table_to_csv_method(html, filename) {
-            var _this = this;
-            var csv = [];
-            // var csv = this.selected;
-            var rows = document.querySelectorAll("table tr");
+          export_table_to_csv_method(arrData) {
+            var arrData1 = arrData.map(index => {
+              for (let key in index) {
+                // x[key] = x[key].replaceAll("\"", "'");
+                index[key] = "\"" + index[key] + "\""
+              } return index
+              })
+            let csvContent = "data:text/csv;charset=utf-8,";
 
-            for (var i = 0; i < rows.length; i++) {
-              var row = [],
-                cols = rows[i].querySelectorAll("td, th");
-
-              for (var j = 1; j < cols.length; j++) row.push(cols[j].innerText);
-
-              csv.push(row.join(","));
-            }
-            // Download CSV
-            // _this.download_csv_of_tabledata(csv.join("\n"), filename);
-            _this.download_csv_of_tabledata(
-              csv.join("\n"),
-              "3DX-SAP Integration"
-            );
+            csvContent += [
+              Object.keys(arrData1[0]).join(","),
+              ...arrData1.map(item => Object.values(item))
+            ]
+              .join("\n")
+              // .replace(/(^\[)|(\]$)/gm, "");
+            const data = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", data);
+            link.setAttribute("download", "export.csv");
+            link.click();
           },
           export_part_data() {
             myWidget.webserviceToExportPartData();
@@ -2439,7 +2450,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           let dd = date1.getDate();
           if (dd < 10) dd = "0" + dd;
           if (mm < 10) mm = "0" + mm;
-          const formattedToday = dd + "/" + mm + "/" + yyyy;
+          const formattedToday = mm + "/" + dd + "/" + yyyy;
           // get the date as a string
           this.date = formattedToday;
           // get the time as a string

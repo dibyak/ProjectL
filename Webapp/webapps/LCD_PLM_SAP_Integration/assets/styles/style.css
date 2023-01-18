@@ -14,7 +14,7 @@
 }
 #tabs {
   background: #eceff1;
-  color: #1976d2;
+  color: #005685;
   margin: 10px;
   padding: 0;
 
@@ -28,7 +28,8 @@ tr:nth-child(even) {
   border-spacing: 0;
 }
 .theme--light.v-data-table > .v-data-table__wrapper > table > thead > tr > th {
-  background-color: #1976d2;
+  /* background-color: #1976d2; */
+  background-color: #005685;
   color: #f5f5f5;
   min-width: 10px !important;
 }
@@ -95,8 +96,8 @@ tr:nth-child(even) {
   width: 410px;
 }
 .v-application .blue {
-  background-color: #1976d2 !important;
-  border-color: #1976d2 !important;
+  background-color: #005685 !important;
+  border-color: #005685 !important;
 }
 .globalsearch{
   color: rgba(0, 0, 0, 0.87);
@@ -108,9 +109,11 @@ tr:nth-child(even) {
   /* margin-left: 500px !important; */
   margin-right: 10px !important;
   margin-top: 10px !important;
-  background-color: #1976d2 !important;
+  /* background-color: #1976d2 !important; */
+  background-color: #005685 !important;
   /* color: white !important; */
   border-radius: 11px;
+  color: white !important;
 }
 .v-tab {
   align-items: center;
@@ -182,6 +185,10 @@ h1{
 }
 .space{
   margin-left: 22px;
+}
+.v-text-field .v-input__icon--clear {
+  opacity: 1;
+  transition: opacity .3s cubic-bezier(.25,.8,.5,1);
 }
 /* .v-snack--top{
   top:5%;
