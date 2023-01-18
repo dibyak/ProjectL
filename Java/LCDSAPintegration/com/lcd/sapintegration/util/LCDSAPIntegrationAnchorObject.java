@@ -13,6 +13,7 @@ import com.matrixone.apps.domain.DomainObject;
 import com.matrixone.apps.domain.DomainRelationship;
 import com.matrixone.apps.domain.util.FrameworkException;
 import com.matrixone.apps.domain.util.MapList;
+import com.matrixone.apps.framework.ui.UIUtil;
 
 import matrix.db.BusinessObject;
 import matrix.db.Context;
@@ -23,7 +24,6 @@ public class LCDSAPIntegrationAnchorObject {
 	private final Map<String, Map<?,?>> multipleCAInfoMap = new HashMap<>();
 	
 	/**
-	 * TODO
 	 * @param context
 	 * @return
 	 * @throws MatrixException
@@ -38,33 +38,29 @@ public class LCDSAPIntegrationAnchorObject {
 		slObjectSelect.add(DomainConstants.SELECT_NAME);
 		slObjectSelect.add(DomainConstants.SELECT_REVISION);
 		slObjectSelect.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PLMENTITY_V_NAME);
-		// TODO
-		slObjectSelect.add("attribute[PLMEntity.V_description]");
+		slObjectSelect.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PLMENTITY_V_DESCRIPTION);
 		slObjectSelect.add(DomainConstants.SELECT_CURRENT);
-		// TODO
-		slObjectSelect.add("attribute[LCDMF_ManufacturingAssembly.LCDMF_SAPMBOMUpdatedOn]");
+		slObjectSelect.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_LCD_MF_SAPMBOMUpdatedOn);
 		StringList slRelSelect = new StringList();
 		slRelSelect.add(DomainRelationship.SELECT_ID);
-		// TODO : Add comments for each argument
 		MapList mlAssmblyConnectedToAnchorObject = 
 				domObjSAPAnchorObj.getRelatedObjects(
-						context,
-						"LCD_SAPBOMInterface", //TODO
-						DomainConstants.QUERY_WILDCARD,
-						slObjectSelect,
-						slRelSelect,
-						false,
-						true,
-						(short) 1,
-						"",
-						"",
-						0);
+						context, // context
+						lcdSAPInteg3DExpConstants.RELATIONSHIP_LCD_SAP_BOM_INTERFACE, // Relationship String
+						DomainConstants.QUERY_WILDCARD, // Type String
+						slObjectSelect, // Object Select StringList
+						slRelSelect, //// Relationship Select StringList
+						false, // To
+						true, // from
+						(short) 1, // Recursion Level
+						"", // Object Where clause String
+						"", // Relationship Where clause String
+						0); // limit
 		
 		return new LCDSAPIntegrationAnchorObject().createAssmblyDataJsonString(context, mlAssmblyConnectedToAnchorObject, lcdSAPInteg3DExpConstants);
 	}
 	
 	/**
-	 * TODO
 	 * @param context
 	 * @param mlAssmblyConnectedToAnchorObject
 	 * @param lcdSAPInteg3DExpConstants
@@ -73,6 +69,7 @@ public class LCDSAPIntegrationAnchorObject {
 	 */
 	private String createAssmblyDataJsonString(Context context, MapList mlAssmblyConnectedToAnchorObject, LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants)
 			throws FrameworkException {
+		Map<?,?> changeActionAttrDetailsMap= new HashMap<>();
 		Iterator<?> iterMLAssmblyConnectedToAnchorObject = mlAssmblyConnectedToAnchorObject.iterator();
 		JsonArrayBuilder jabMAs = Json.createArrayBuilder();
 		StringList slCAobjectSelects = new StringList();
@@ -81,34 +78,31 @@ public class LCDSAPIntegrationAnchorObject {
 		while (iterMLAssmblyConnectedToAnchorObject.hasNext()) {
 			JsonObjectBuilder jobMA = Json.createObjectBuilder();
 			Map<?, ?> tempAssmblyDataMap = (Map<?, ?>) iterMLAssmblyConnectedToAnchorObject.next();
-			String strLCDSAPInterfaceConnId = (String) tempAssmblyDataMap.get(DomainConstants.SELECT_ID);
+			String strLCDSAPInterfaceConnId = (String) tempAssmblyDataMap.get(DomainRelationship.SELECT_ID);
 			Map<?,?> tempLCDSAPInterfaceConnDataMap = DomainRelationship.newInstance(context, strLCDSAPInterfaceConnId).getAttributeMap(context);
-			//TODO
-			String strCAID = (String) tempLCDSAPInterfaceConnDataMap.get("LCD_CAID");
-			Map<?,?> changeActionAttrDetailsMap = getChangeActionDetails(context, strCAID, slCAobjectSelects);
+			String strCAID = (String) tempLCDSAPInterfaceConnDataMap.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_CAID);
+			if(UIUtil.isNotNullAndNotEmpty(strCAID)) {
+			changeActionAttrDetailsMap = getChangeActionDetails(context, strCAID, slCAobjectSelects);
+			}
 			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_CONNECTION_ID, strLCDSAPInterfaceConnId);
 			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_ID, strCAID);
 			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_BOM_COMPONENT_ID, (String) tempAssmblyDataMap.get(DomainConstants.SELECT_ID));
 			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_BOM_COMPONENT_NAME, (String) tempAssmblyDataMap.get(DomainConstants.SELECT_NAME));
-			//TODO
-			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_STATUS, (String)tempLCDSAPInterfaceConnDataMap.get("LCD_ProcessStatusFlag"));
+			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_STATUS, (String)tempLCDSAPInterfaceConnDataMap.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG));
 			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_REVISION, (String) tempAssmblyDataMap.get(DomainConstants.SELECT_REVISION));
 			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_TITLE, (String) tempAssmblyDataMap.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PLMENTITY_V_NAME));
 			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_MATURITY, (String) tempAssmblyDataMap.get(DomainConstants.SELECT_CURRENT));
-			jobMA.add(LCDSAPIntegrationDataConstants.DESCRIPTION, (String) tempAssmblyDataMap.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PLMENTITY_V_DESCRIPTION));
+			jobMA.add(LCDSAPIntegrationDataConstants.DESCRIPTION, (String) tempAssmblyDataMap.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PLMENTITY_V_DESCRIPTION));
 			jobMA.add(LCDSAPIntegrationDataConstants.CA_COMPLETED_TIME, (String) changeActionAttrDetailsMap.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_ACTUAL_COMPLETION_DATE));
 			jobMA.add(LCDSAPIntegrationDataConstants.CA_NAME, (String) changeActionAttrDetailsMap.get(DomainConstants.SELECT_NAME));
-			//TODO
-			jobMA.add(LCDSAPIntegrationDataConstants.SAP_FEEDBACK_TIMESTAMP, (String) tempAssmblyDataMap.get("attribute[LCDMF_ManufacturingAssembly.LCDMF_SAPMBOMUpdatedOn]"));
-			//TODO
-			jobMA.add(LCDSAPIntegrationDataConstants.SAP_FEEDBACK_MESSAGE, (String)tempLCDSAPInterfaceConnDataMap.get("LCD_ReasonforFailure"));
+			jobMA.add(LCDSAPIntegrationDataConstants.SAP_FEEDBACK_TIMESTAMP, (String) tempAssmblyDataMap.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_LCD_MF_SAPMBOMUpdatedOn));
+			jobMA.add(LCDSAPIntegrationDataConstants.SAP_FEEDBACK_MESSAGE, (String)tempLCDSAPInterfaceConnDataMap.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE));
 			jabMAs.add(jobMA);
 		}
 		return jabMAs.build().toString();
 	}
 	
 	/**
-	 * TODO
 	 * @param context
 	 * @param strCAId
 	 * @param slObjSelects
