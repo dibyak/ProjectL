@@ -142,7 +142,7 @@ tr:nth-child(even) {
   border: 2px solid black !important;
 }
 
-.v-application .grey.lighten-2 {
+.v-application .teal.lighten-2 {
     border: 1px solid grey !important;
 }
 .v-application .yellow.lighten-2 {
@@ -189,6 +189,9 @@ h1{
 .v-text-field .v-input__icon--clear {
   opacity: 1;
   transition: opacity .3s cubic-bezier(.25,.8,.5,1);
+}
+table > thead > tr > th:hover {
+  color: #78befa !important;
 }
 /* .v-snack--top{
   top:5%;

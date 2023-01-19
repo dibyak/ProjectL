@@ -1,13 +1,13 @@
-define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
+define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
   "vue",
   "DS/PlatformAPI/PlatformAPI",
   "DS/WAFData/WAFData",
-  "LCD/LCD_PLM_SAP_Integration/lib/scripts/vuetify.min",
-  "i18n!LCD/LCD_PLM_SAP_Integration/nls/PLM_SAP_Integration_nls",
-  "css!LCD/LCD_PLM_SAP_Integration/lib/styles/vuetify.min.css",
+  "LCD/LCD_3DX_SAP_Integration/lib/scripts/vuetify.min",
+  "i18n!LCD/LCD_3DX_SAP_Integration/nls/3DX_SAP_Integration_nls",
+  "css!LCD/LCD_3DX_SAP_Integration/lib/styles/vuetify.min.css",
   "css!LCD/LCDLIB/styles/google.css",
   "css!LCD/LCDLIB/styles/materialdesignicons.min.css",
-  "css!LCD/LCD_PLM_SAP_Integration/assets/styles/style.css",
+  "css!LCD/LCD_3DX_SAP_Integration/assets/styles/style.css",
 ], function (Vue, PlatformAPI, WAFData, Vuetify, PLM_SAP_Integration_nls) {
   Vue.use(Vuetify, {});
   var myWidget = {
@@ -34,8 +34,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
     // },
     webserviceToGetAllBOMComponents: function () {
       var _this = this;
-      // WAFData.authenticatedRequest(_3dspaceUrl + '/LCDSAPIntegrationModeler/LCDSAPIntegrationService/getMA',
-      // WAFData.authenticatedRequest(_3dspaceUrl + '/LCDSAPIntegrationModeler/lcdSAPIntegrationServices/getSAPTransferDetailsOfAnchoredAssemblies',
       WAFData.authenticatedRequest(_3dspaceUrl + widget.getValue("webserviceURLToGetAllBOMComponents"),
         {
           method: "GET",
@@ -92,7 +90,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             } else if (_this.vueapp.snackbarMsg[i].status == "Failed") {
               _this.vueapp.snackbarColor = "error";
               _this.vueapp.snackbarIcon = "mdi-close-circle";
-              // _this.vueapp.snackbarMsg.push(returnData);
               _this.vueapp.snackbar = true;
               _this.vueapp.SearchMethod.map((x) => {
                 _this.vueapp.selected.map((y) => {
@@ -106,11 +103,9 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             }
           })
           .catch(function () {
-            // alert("ERROR OCCURED!!!");
             _this.vueapp.snackbarColor = "error";
             _this.vueapp.snackbarIcon = "mdi-close-circle";
             _this.vueapp.snackbarMsg.push("Something went wrong.");
-            // console.log(_this.vueapp.snackbarMsg);
             _this.vueapp.snackbar = true;
 
             _this.vueapp.SearchMethod.map((x) => {
@@ -143,16 +138,15 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                 "Content-Type": "application/json",
               },
               onComplete: function (myJson) {
-                // alert("ONLOAD CALLED!!!");
                 myWidget.jsonResponse = JSON.parse(myJson);
                 resolve();
               },
               onFailure: function (error) {
                 console.log( "--------> ERROR ON WEBSERVICE FAILURE " +error);
+                _this = this;
                 _this.vueapp.snackbarColor = "error";
                 _this.vueapp.snackbarIcon = "mdi-close-circle";
-                _this.vueapp.snackbarMsg.push("Something went wrong.");
-                // console.log(_this.vueapp.snackbarMsg);
+                _this.vueapp.snackbarnsgforFailedReport ="Something went wrong.";
                 _this.vueapp.snackbar = true;
     
                 _this.vueapp.SearchMethod.map((x) => {
@@ -185,7 +179,6 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         ConnectionID: Connection_ID,
         BOMComponentName : BOM_Comp_Name
       };
-      // console.log( "dataTobeSendfromUI------------------"+ JSON.stringify(dataTobeSendfromUI));
       WAFData.authenticatedRequest(
         _3dspaceUrl + widget.getValue("webserviceURLToExportPartData"),
         {
@@ -197,18 +190,16 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             "Content-Type": "application/json",
           },
           onComplete: function (dataResp) {
-            // var data = JSON.parse(dataResp);
-            // _this.vueapp.partData = data;
-            // console.table("RESPONCE ------>" + dataResp);
-            // var headers = dataResp.name;
-            // alert(headers);
             _this.vueapp.download_csv_of_tabledata(
               dataResp,BOM_Comp_Name
             );
           },
           onFailure: function (error) {
-            alert("ERROR OCCURED!!!");
             console.log(error);
+            _this.vueapp.snackbarColor = "error";
+            _this.vueapp.snackbarIcon = "mdi-close-circle";
+            _this.vueapp.snackbarnsgforFailedReport ="Something went wrong.";
+            _this.vueapp.snackbar = true;
           },
         }
       );
@@ -230,6 +221,19 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
       <div class="snackbar_div">
         <v-snackbar v-model="snackbar" v-for="item in snackbarMsg" :key="item" :color="snackbarColor" top right :timeout="4000">
           <p><v-icon>{{snackbarIcon}}</v-icon>Name : {{item.BOMComponentName}}<br><span class="space">Status : {{item.status}}</span></p>
+          <template v-slot:action="{ attrs }">
+          <v-btn
+            text
+            color="white"
+            v-bind="attrs"
+            @click="snackbar = false"
+          >
+          <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </template>
+        </v-snackbar>
+        <v-snackbar v-model="snackbar" :color="snackbarColor" top right :timeout="4000">
+          <p><v-icon>{{snackbarIcon}}</v-icon>{{snackbarnsgforFailedReport}}</p>
           <template v-slot:action="{ attrs }">
           <v-btn
             text
@@ -417,26 +421,26 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                       </div>
                     </v-menu>
                   </template>
-                  <template v-slot:header.title="{ header }">
+                  <template v-slot:header.Title="{ header }">
                     {{ header.text }}
                     <v-menu offset-y :close-on-content-click="false">
                       <template v-slot:activator="{ on, attrs }">
                         <v-btn icon v-bind="attrs" v-on="on">
-                          <v-icon small :color="title ? 'primary' : ''">
+                          <v-icon small :color="Title ? 'primary' : ''">
                             mdi-magnify-expand
                           </v-icon>
                         </v-btn>
                       </template>
                       <div style="background-color: white; width: 280px">
                         <v-text-field
-                          v-model="title"
+                          v-model="Title"
                           class="pa-4"
                           type="text"
                           label="Enter the search term"
                           :autofocus="true"
                         ></v-text-field>
                         <v-btn
-                          @click="title = ''"
+                          @click="Title = ''"
                           small
                           text
                           color="primary"
@@ -772,26 +776,26 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                       </div>
                     </v-menu>
                   </template>
-                  <template v-slot:header.title="{ header }">
+                  <template v-slot:header.Title="{ header }">
                     {{ header.text }}
                     <v-menu offset-y :close-on-content-click="false">
                       <template v-slot:activator="{ on, attrs }">
                         <v-btn icon v-bind="attrs" v-on="on">
-                          <v-icon small :color="title ? 'primary' : ''">
+                          <v-icon small :color="Title ? 'primary' : ''">
                             mdi-magnify-expand
                           </v-icon>
                         </v-btn>
                       </template>
                       <div style="background-color: white; width: 280px">
                         <v-text-field
-                          v-model="title"
+                          v-model="Title"
                           class="pa-4"
                           type="text"
                           label="Enter the search term"
                           :autofocus="true"
                         ></v-text-field>
                         <v-btn
-                          @click="title = ''"
+                          @click="Title = ''"
                           small
                           text
                           color="primary"
@@ -1126,26 +1130,26 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                       </div>
                     </v-menu>
                   </template>
-                  <template v-slot:header.title="{ header }">
+                  <template v-slot:header.Title="{ header }">
                     {{ header.text }}
                     <v-menu offset-y :close-on-content-click="false">
                       <template v-slot:activator="{ on, attrs }">
                         <v-btn icon v-bind="attrs" v-on="on">
-                          <v-icon small :color="title ? 'primary' : ''">
+                          <v-icon small :color="Title ? 'primary' : ''">
                             mdi-magnify-expand
                           </v-icon>
                         </v-btn>
                       </template>
                       <div style="background-color: white; width: 280px">
                         <v-text-field
-                          v-model="title"
+                          v-model="Title"
                           class="pa-4"
                           type="text"
                           label="Enter the search term"
                           :autofocus="true"
                         ></v-text-field>
                         <v-btn
-                          @click="title = ''"
+                          @click="Title = ''"
                           small
                           text
                           color="primary"
@@ -1491,26 +1495,26 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                       </div>
                     </v-menu>
                   </template>
-                  <template v-slot:header.title="{ header }">
+                  <template v-slot:header.Title="{ header }">
                     {{ header.text }}
                     <v-menu offset-y :close-on-content-click="false">
                       <template v-slot:activator="{ on, attrs }">
                         <v-btn icon v-bind="attrs" v-on="on">
-                          <v-icon small :color="title ? 'primary' : ''">
+                          <v-icon small :color="Title ? 'primary' : ''">
                             mdi-magnify-expand
                           </v-icon>
                         </v-btn>
                       </template>
                       <div style="background-color: white; width: 280px">
                         <v-text-field
-                          v-model="title"
+                          v-model="Title"
                           class="pa-4"
                           type="text"
                           label="Enter the search term"
                           :autofocus="true"
                         ></v-text-field>
                         <v-btn
-                          @click="title = ''"
+                          @click="Title = ''"
                           small
                           text
                           color="primary"
@@ -1859,26 +1863,26 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         </div>
       </v-menu>
       </template>
-      <template v-slot:header.title="{ header }">
+      <template v-slot:header.Title="{ header }">
         {{ header.text }}
         <v-menu offset-y :close-on-content-click="false" >
           <template v-slot:activator="{ on, attrs }">
             <v-btn icon v-bind="attrs" v-on="on">
-              <v-icon small :color="title ? 'primary' : ''">
+              <v-icon small :color="Title ? 'primary' : ''">
                 mdi-magnify-expand
               </v-icon>
             </v-btn>
           </template>
           <div style="background-color: white; width: 280px" >
             <v-text-field
-              v-model="title"
+              v-model="Title"
               class="pa-4 "
               type="text"
               label="Enter the search term"
               :autofocus="true"
             ></v-text-field>
             <v-btn
-              @click="title = ''"
+              @click="Title = ''"
               small
               text
               color="primary"
@@ -2068,6 +2072,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
         data: {
           snackbarColor: "success",
           snackbarMsg: [],
+          snackbarnsgforFailedReport:"",
           snackbarIcon: "",
           arrObj: [],
           failedStatus: false,
@@ -2077,7 +2082,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
           BOMComponentName: "",
           status: "",
           revision: "",
-          title: "",
+          Title: "",
           maturity: "",
           description: "",
           caCompletedTime: "",
@@ -2151,7 +2156,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             if (this.revision) {
               conditions.push(this.filterRevision);
             }
-            if (this.title) {
+            if (this.Title) {
               conditions.push(this.filterTitle);
             }
             if (this.maturity) {
@@ -2302,11 +2307,11 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             downloadLink.click();
           },
           export_table_to_csv_method(arrData) {
-            var arrData1 = arrData.map(index => {
+            let arrData1 = arrData.map((index) => {
               for (let key in index) {
-                // x[key] = x[key].replaceAll("\"", "'");
                 index[key] = "\"" + index[key] + "\""
-              } return index
+                // index[key] = index[key].replaceAll("\"", "");
+              } return index;
               })
             let csvContent = "data:text/csv;charset=utf-8,";
 
@@ -2319,12 +2324,17 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
             const data = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", data);
-            link.setAttribute("download", "export.csv");
+            link.setAttribute("download", "3DX-SAP Integration.csv");
             link.click();
+            arrData1 = arrData.map(index => {
+              for (let key in index) {
+                // index[key] = "\"" + index[key] + "\""
+                index[key] = index[key].replaceAll("\"", "");
+              } return index;
+              })
           },
           export_part_data() {
             myWidget.webserviceToExportPartData();
-            // _this.download_csv_of_tabledata(this.partData.join("\n"), "Sub contract part");
           },
           getStatusColor(status) {
             if (status === PLM_SAP_Integration_nls.success)
@@ -2352,7 +2362,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
               .includes(this.revision.toLowerCase());
           },
           filterTitle(item) {
-            return item.title.toLowerCase().includes(this.title.toLowerCase());
+            return item.Title.toLowerCase().includes(this.Title.toLowerCase());
           },
           filterMaturity(item) {
             return item.maturity
@@ -2415,7 +2425,7 @@ define("LCD/LCD_PLM_SAP_Integration/assets/scripts/main", [
                     data.revision
                       .toLowerCase()
                       .includes(this.globalSearch.toLowerCase()) ||
-                    data.title
+                    data.Title
                       .toLowerCase()
                       .includes(this.globalSearch.toLowerCase()) ||
                     data.maturity
