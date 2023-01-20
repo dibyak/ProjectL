@@ -1,5 +1,16 @@
+.v-application {
+  height: 100%;
+}
+.refreshClass {
+  text-align: right;
+  margin-bottom: 0 !important;
+}
+.form {
+  display: flex;
+  flex-grow: 1;
+}
 table > thead > tr > th {
-  background-color: #005685;
+  background-color: #005685 !important;
   color: #fff !important;
   min-width: 180px;
   height: 44px !important;
@@ -19,6 +30,7 @@ table > thead > tr > th:hover {
 }
 .container {
   max-width: none;
+  padding-top: 0;
 }
 .title {
   background: #eceff1;
@@ -31,8 +43,22 @@ table > thead > tr > th:hover {
   margin: 2px;
 }
 .v-card__title {
-  width: 25%;
+  width: 30%;
   margin: auto;
+  padding: 16px 0 0 0;
+  align-items: start;
+}
+.partLabel {
+  margin-top: 4px !important;
+}
+.searchBtn {
+  margin-top: 4px !important;
+}
+.exportBtn {
+  color: #fff !important;
+}
+.exportBtn:hover {
+  color: #78befa !important;
 }
 @media screen and (max-width: 1500px) {
   .v-card__title {
@@ -63,6 +89,6 @@ table > thead > tr > th:hover {
   color: #005685;
 }
 .v-data-table__wrapper {
-  max-height: 525px;
+  max-height: 400px;
   overflow-y: auto;
 }
