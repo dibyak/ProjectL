@@ -14,6 +14,7 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
   Vuetify,
   WAFData,
   PlatformAPI,
+  DataDragAndDrop,
   Part_Where_Used_nls,
   Part_Where_Used_webservicedetails
 ) {
@@ -29,7 +30,7 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
       for (var i = 0; i < apps.length; i++) {
         if (apps[i]["propertyKey"] === "app.urls.myapps") {
           var u = new URL(apps[i]["propertyValue"]);
-          _3dspaceUrl = u.href;
+          myWidget._3dspaceUrl = u.href;
           break;
         }
       }
@@ -37,7 +38,7 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
         el: "#app",
         vuetify: new Vuetify(),
         template: `
-        <v-app>
+        <v-app id="droppableArea">
         <p class="refreshClass">Last refreshed on: {{ date }} {{ time }}</p>
         <v-container>
           <h2 class="title">
@@ -85,6 +86,7 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
                 color="#005685"
                 class="ma-2 exportBtn"
                 depressed
+                :disabled="!result.length"
                 @click="exportTableToCsvMethod(header, result)"
               >
                 EXPORT
@@ -241,7 +243,10 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
               (v) => !!v || "Part Title is required",
               (v) =>
                 v.length >= 13 ||
-                "Part Title must be equal to or greater than 13 characters",
+                "Part title must be greater than and equal to 13",
+              (v) =>
+                /^[A-Z]\w{2}-[A-Z]\w{5}-\w{2}(\s\d{1,2}\.\d{1,2})?$/.test(v) ||
+                "Part title must be valid",
             ],
             searchLevel: "",
             searchTopNodeName: "",
@@ -254,6 +259,7 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
         },
         mounted() {
           this.getCurrentTimestamp();
+          this.handleDroppableArea();
         },
         computed: {
           filteredItems() {
@@ -295,6 +301,32 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
             // get the time as a string
             this.time = date1.toLocaleTimeString();
           },
+          handleDroppableArea() {
+            let droppableArea = document.getElementById("droppableArea");
+            DataDragAndDrop.clean(droppableArea);
+            let counter = 0;
+            DataDragAndDrop.droppable(droppableArea, {
+              enter: () => {
+                counter++;
+                droppableArea.style.border = "4px dashed hwb(203deg 21% 23%)";
+                droppableArea.style.opacity = "1";
+              },
+              drop: (json) => {
+                counter = 0;
+                droppableArea.style.border = "0";
+                let data = JSON.parse(json);
+                this.search =
+                  data.data.items[0].displayName + " " + data.version;
+                this.sendRequest();
+              },
+              leave: () => {
+                counter--;
+                if (counter == 0) {
+                  droppableArea.style.border = "0";
+                }
+              },
+            });
+          },
           sendRequest() {
             this.result = [];
             this.loadingStatus = true;
@@ -302,13 +334,14 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
             let bomDataArr = widget.getValue("bomData");
             bomDataArr.forEach((bomData) => {
               let message = {
-                partTitle: this.search.trim(), //V21-B01030-00
+                partTitle: this.search.trim(),
                 bomData: bomData,
               };
               let _this = this;
+              let _myWidget = myWidget;
               reqNo += 1;
               WAFData.authenticatedRequest(
-                _3dspaceUrl +
+                _myWidget._3dspaceUrl +
                   Part_Where_Used_webservicedetails.getPartWhereUsedData,
                 {
                   method: "POST",

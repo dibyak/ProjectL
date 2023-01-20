@@ -65,6 +65,7 @@ public class PartWhereUsedUtil {
 		System.out.println("getPartWhereUsedData :: START Method !!");
 		long start = System.currentTimeMillis();
 
+		Response res = null;
 		JsonObjectBuilder joInputError = Json.createObjectBuilder();
 		JsonArrayBuilder jsonArrayResult = Json.createArrayBuilder();
 		JsonReader jsonReader = null;
@@ -180,14 +181,16 @@ public class PartWhereUsedUtil {
 					iPrevLevel = iCurrLevel;
 				}
 				jsonArrayResult = buildResponse(alPaths, sRootTitle, sRootVDescription, sRootPId, sRootRevision, hasMatch);
+				res = Response.status(HttpServletResponse.SC_OK).entity(jsonArrayResult.build().toString()).build();
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+			res = Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
 			throw e;
 		}
 		long diff = System.currentTimeMillis() - start;
 		System.out.println("getPartWhereUsedData :: START Method Total time - " + diff + " in ms.");
-		return Response.status(HttpServletResponse.SC_OK).entity(jsonArrayResult.build().toString()).build();
+		return res;
 	}
 
 	private JsonArrayBuilder buildResponse(ArrayList<ArrayDeque<Map<String, String>>> alPaths, String strRootVName,
