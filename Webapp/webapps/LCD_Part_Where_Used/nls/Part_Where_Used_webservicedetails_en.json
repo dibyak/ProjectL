@@ -1,3 +1,4 @@
 {
-    "getPartWhereUsedData": "/PartWhereUsedModeler/PartWhereUsedService/getPartWhereUsedData"
+    "getPartWhereUsedData": "/PartWhereUsedModeler/PartWhereUsedService/getPartWhereUsedData",
+    "getPartTitleAndRev": "/PartWhereUsedModeler/PartWhereUsedService/getPartTitleAndRev"
 }
