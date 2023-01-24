@@ -22,9 +22,7 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
   var myWidget = {
     _3dashboardUrl: widget.widgetDomain,
     _3dspaceUrl: "",
-    onRefresh: function () {
-      myWidget.onLoad();
-    },
+    vue: null,
     onLoad: function () {
       var apps = PlatformAPI.getAllApplicationConfigurations();
       for (var i = 0; i < apps.length; i++) {
@@ -34,11 +32,12 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
           break;
         }
       }
-      new Vue({
+      myWidget.vue = new Vue({
         el: "#app",
         vuetify: new Vuetify(),
         template: `
-        <v-app id="droppableArea">
+        <v-app>
+        <div id="droppableArea">
         <p class="refreshClass">Last refreshed on: {{ date }} {{ time }}</p>
         <v-container>
           <h2 class="title">
@@ -231,6 +230,7 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
             </template>
           </v-data-table>
         </v-container>
+        </div>
       </v-app>
             `,
         data() {
@@ -243,10 +243,11 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
               (v) => !!v || "Part Title is required",
               (v) =>
                 v.length >= 13 ||
-                "Part title must be greater than and equal to 13",
+                "Part Title must be greater than and equal to 13",
               (v) =>
-                /^[A-Z]\w{2}-[A-Z]\w{5}-\w{2}(\s\d{1,2}\.\d{1,2})?$/.test(v) ||
-                "Part title must be valid",
+                /(^[V,C]\w{2}-[B,C]\w{5}-\w{1,2}-\w{1,4}(\s\d{1,2}\.\d{1,2})?$)|(^[A-Z]\w{2}-[A-Z]\w{5}-\w{1,2}(-\w{2})?(\s\d{1,2}\.\d{1,2})?$)/.test(
+                  v
+                ) || "Part Title must be valid",
             ],
             searchLevel: "",
             searchTopNodeName: "",
@@ -315,9 +316,8 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
                 counter = 0;
                 droppableArea.style.border = "0";
                 let data = JSON.parse(json);
-                this.search =
-                  data.data.items[0].displayName + " " + data.version;
-                this.sendRequest();
+                let objectId = data.data.items[0].objectId;
+                this.getTitleRevision(objectId);
               },
               leave: () => {
                 counter--;
@@ -326,6 +326,39 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
                 }
               },
             });
+          },
+          getTitleRevision(objectId) {
+            let message = {
+              ObjectId: objectId,
+            };
+            let _this = this;
+            let _myWidget = myWidget;
+            console.log(
+              _myWidget._3dspaceUrl +
+                Part_Where_Used_webservicedetails.getPartTitleAndRev
+            );
+            WAFData.authenticatedRequest(
+              _myWidget._3dspaceUrl +
+                Part_Where_Used_webservicedetails.getPartTitleAndRev,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                data: JSON.stringify(message),
+                accept: "application/json",
+                timeout: 200000,
+                onComplete: (res) => {
+                  let result = JSON.parse(res);
+                  _this.search =
+                    result.objectTitle + " " + result.objectRevision;
+                  _this.sendRequest();
+                },
+                onFailure: (err) => {
+                  console.log(err.message);
+                },
+              }
+            );
           },
           sendRequest() {
             this.result = [];
@@ -357,7 +390,7 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
                     reqNo -= 1;
                     if (reqNo === 0) _this.loadingStatus = false;
                   },
-                  onFailure: (err) => {
+                  onFailure: (...err) => {
                     console.log(err);
                     reqNo -= 1;
                     if (reqNo === 0) _this.loadingStatus = false;
@@ -444,6 +477,14 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
           },
         },
       });
+    },
+    onRefresh: function () {
+      let searchValue = myWidget.vue.search;
+      if (searchValue && myWidget.vue.formValidity) {
+        myWidget.onLoad();
+        myWidget.vue.search = searchValue;
+        myWidget.vue.sendRequest();
+      }
     },
   };
   return myWidget;

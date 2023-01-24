@@ -49,7 +49,7 @@ public class PartWhereUsedUtil {
 	private static final String FIELD_LEVEL = "level";
 	private static final String FIELD_TOP_NODE_NAME = "topNodeName";
 	private static final String FIELD_TOP_NODE_TITLE = "topNodeTitle";
-	private static final String FIELD_NAVIGATION_DATA =  "nodeMapArr";
+	private static final String FIELD_NAVIGATION_DATA = "nodeMapArr";
 	private static final String FIELD_PART_TITLE = "PartTitle";
 	private static final String FIELD_PART_ID = "PartId";
 
@@ -114,9 +114,9 @@ public class PartWhereUsedUtil {
 				} else {
 					sInputPartRevision = "";
 				}
-				
+
 				if (jaBOMData.isEmpty()) {
-					joInputError.add("message", "BOM data is missing!");
+					joInputError.add("message", "P-Tree data is missing in the configuration file.");
 					return Response.status(HttpServletResponse.SC_BAD_REQUEST).entity(joInputError.build().toString())
 							.build();
 				}
@@ -125,63 +125,75 @@ public class PartWhereUsedUtil {
 				String sRootName = jaBOMData.getString(DomainConstants.SELECT_NAME);
 				String sRootRevision = jaBOMData.getString(DomainConstants.SELECT_REVISION);
 
-				DomainObject domObjRootPart = DomainObject.newInstance(context,
-						new BusinessObject(sRootType, sRootName, sRootRevision, "vplm"));
+				BusinessObject busObject = new BusinessObject(sRootType, sRootName, sRootRevision, "vplm");
+				System.out.println(" Part Where Used :: bus exist? - "+busObject.exists(context));
+				if (busObject.exists(context)) {
+					System.out.println("Inside Business Object !!");
+					DomainObject domObjRootPart = DomainObject.newInstance(context, busObject.getObjectId(context));
 
-				Map<?, ?> mRootInfo = domObjRootPart.getInfo(context, busSelectList);
-				sRootTitle = (String) mRootInfo.get(SELECT_ATTRIBUTE_PLMENTITY_V_NAME);
-				sRootVDescription = (String) mRootInfo.get(SELECT_ATTRIBUTE_PLMENTITY_V_DESCRIPTION);
-				sRootPId = (String) mRootInfo.get(DomainConstants.SELECT_PHYSICAL_ID);
+					Map<?, ?> mRootInfo = domObjRootPart.getInfo(context, busSelectList);
+					sRootTitle = (String) mRootInfo.get(SELECT_ATTRIBUTE_PLMENTITY_V_NAME);
+					sRootVDescription = (String) mRootInfo.get(SELECT_ATTRIBUTE_PLMENTITY_V_DESCRIPTION);
+					sRootPId = (String) mRootInfo.get(DomainConstants.SELECT_PHYSICAL_ID);
 
-				ExpandParams expandParams = ExpandParams.getParams();
-				expandParams.setRelPattern(REL_VPMINSTANCE);
-				expandParams.setTypePattern(TYPE_VPMREFERENCE);
-				expandParams.setBusSelects(busSelectList);
-				expandParams.setRelSelects(relSelectList);
-				expandParams.setGetTo(false);
-				expandParams.setGetFrom(true);
-				expandParams.setRecurse((short) 0);
-				expandParams.setObjWhere("");
-				expandParams.setRelWhere("");
-				expandParams.setLimit((short) 0);
-				expandParams.setCheckHidden(false);
-				expandParams.setPreventDuplicates(false);
-				expandParams.setPageSize(500);
-				ExpansionIterator infoBOM2 = domObjRootPart.getExpansionIterator(context, expandParams);
+					ExpandParams expandParams = ExpandParams.getParams();
+					expandParams.setRelPattern(REL_VPMINSTANCE);
+					expandParams.setTypePattern(TYPE_VPMREFERENCE);
+					expandParams.setBusSelects(busSelectList);
+					expandParams.setRelSelects(relSelectList);
+					expandParams.setGetTo(false);
+					expandParams.setGetFrom(true);
+					expandParams.setRecurse((short) 0);
+					expandParams.setObjWhere("");
+					expandParams.setRelWhere("");
+					expandParams.setLimit((short) 0);
+					expandParams.setCheckHidden(false);
+					expandParams.setPreventDuplicates(false);
+					expandParams.setPageSize(500);
+					ExpansionIterator infoBOM2 = domObjRootPart.getExpansionIterator(context, expandParams);
 
-				RelationshipWithSelect relSelect = null;
-				ArrayList<ArrayDeque<Map<String, String>>> alPaths = new ArrayList<>();
+					RelationshipWithSelect relSelect = null;
+					ArrayList<ArrayDeque<Map<String, String>>> alPaths = new ArrayList<>();
 
-				while (infoBOM2.hasNext()) {
-					relSelect = infoBOM2.next();
-					sPartTitle = relSelect.getTargetSelectData(SELECT_ATTRIBUTE_PLMENTITY_V_NAME);
-					sPartPId = relSelect.getTargetSelectData(DomainConstants.SELECT_PHYSICAL_ID);
-					sPartRevision = relSelect.getTargetSelectData(DomainConstants.SELECT_REVISION);
-					iCurrLevel = Integer.valueOf(relSelect.getLevel());
+					while (infoBOM2.hasNext()) {
+						relSelect = infoBOM2.next();
+						sPartTitle = relSelect.getTargetSelectData(SELECT_ATTRIBUTE_PLMENTITY_V_NAME);
+						sPartPId = relSelect.getTargetSelectData(DomainConstants.SELECT_PHYSICAL_ID);
+						sPartRevision = relSelect.getTargetSelectData(DomainConstants.SELECT_REVISION);
+						iCurrLevel = Integer.valueOf(relSelect.getLevel());
 
-					int diff = 0;
-					if (iCurrLevel <= iPrevLevel) {
-						diff = iPrevLevel - iCurrLevel;
-						for (int i = 0; i < diff + 1; i++) {
-							arrayDEQueue.pop();
+						int diff = 0;
+						if (iCurrLevel <= iPrevLevel) {
+							diff = iPrevLevel - iCurrLevel;
+							for (int i = 0; i < diff + 1; i++) {
+								arrayDEQueue.pop();
+							}
 						}
-					}
 
-					HashMap<String, String> nodeMap = new HashMap<>();
-					nodeMap.put(FIELD_PART_TITLE, sPartTitle + " " + sPartRevision);
-					nodeMap.put(FIELD_PART_ID, sPartPId);
-					arrayDEQueue.push(nodeMap);
+						HashMap<String, String> nodeMap = new HashMap<>();
+						nodeMap.put(FIELD_PART_TITLE, sPartTitle + " " + sPartRevision);
+						nodeMap.put(FIELD_PART_ID, sPartPId);
+						arrayDEQueue.push(nodeMap);
 
-					if (sPartTitle.equals(sInputPartTitle) && (UIUtil.isNullOrEmpty(sInputPartRevision)
-							|| (UIUtil.isNotNullAndNotEmpty(sInputPartRevision)
-									&& sPartRevision.equals(sInputPartRevision)))) {
-						alPaths.add(arrayDEQueue.clone());
-						hasMatch = true;
+						if (sPartTitle.equals(sInputPartTitle) && (UIUtil.isNullOrEmpty(sInputPartRevision)
+								|| (UIUtil.isNotNullAndNotEmpty(sInputPartRevision)
+										&& sPartRevision.equals(sInputPartRevision)))) {
+							alPaths.add(arrayDEQueue.clone());
+							hasMatch = true;
+						}
+						iPrevLevel = iCurrLevel;
 					}
-					iPrevLevel = iCurrLevel;
+					infoBOM2.close();
+					jsonArrayResult = buildResponse(alPaths, sRootTitle, sRootVDescription, sRootPId, sRootRevision,
+							hasMatch);
+					res = Response.status(HttpServletResponse.SC_OK).entity(jsonArrayResult.build().toString()).build();
+				} else {
+					System.out.println("Outside Business Object !!");
+					joInputError.add("message",
+							"P-Tree " + sRootName + " " + sRootRevision + " is not exist in the system.");
+					return Response.status(HttpServletResponse.SC_BAD_REQUEST).entity(joInputError.build().toString())
+							.build();
 				}
-				jsonArrayResult = buildResponse(alPaths, sRootTitle, sRootVDescription, sRootPId, sRootRevision, hasMatch);
-				res = Response.status(HttpServletResponse.SC_OK).entity(jsonArrayResult.build().toString()).build();
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -239,5 +251,48 @@ public class PartWhereUsedUtil {
 			throw e;
 		}
 		return jArrFinal;
+	}
+
+	/**
+	 * 
+	 * @param context
+	 * @param sObjectID
+	 * @return
+	 * @throws Exception
+	 */
+	public Response getPartTitleAndRev(Context context, String sObjectID) throws Exception {
+		Response res = null;
+		JsonReader jsonReader = null;
+		String sInputObjectId = DomainConstants.EMPTY_STRING;
+		String sObjTitle = DomainConstants.EMPTY_STRING;
+		String sObjRevision = DomainConstants.EMPTY_STRING;
+		StringList slObjectSelect = new StringList();
+		slObjectSelect.add(DomainConstants.SELECT_REVISION);
+		slObjectSelect.add(SELECT_ATTRIBUTE_PLMENTITY_V_NAME);
+		
+		JsonObjectBuilder jObjDetail = Json.createObjectBuilder();
+		try {
+			if(!sObjectID.isEmpty()) {
+				jsonReader = Json.createReader(new StringReader(sObjectID));
+				JsonObject jsonObjInput = jsonReader.readObject();
+				sInputObjectId = jsonObjInput.getString("ObjectId");
+				System.out.println("sInputObjectId-----------"+sInputObjectId);
+				
+				DomainObject domObj = DomainObject.newInstance(context, sInputObjectId);
+				Map<?, ?> mObjInfo = domObj.getInfo(context, slObjectSelect);
+				sObjTitle = (String) mObjInfo.get(SELECT_ATTRIBUTE_PLMENTITY_V_NAME);
+				sObjRevision = (String) mObjInfo.get(DomainConstants.SELECT_REVISION);
+				System.out.println("sObjTitle-----------"+sObjTitle);
+				System.out.println("sObjRevision-----------"+sObjRevision);
+				jObjDetail.add("objectTitle", sObjTitle);
+				jObjDetail.add("objectRevision", sObjRevision);
+				res = Response.status(HttpServletResponse.SC_OK).entity(jObjDetail.build().toString()).build();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			res = Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+			throw e;
+		}
+		return res;
 	}
 }

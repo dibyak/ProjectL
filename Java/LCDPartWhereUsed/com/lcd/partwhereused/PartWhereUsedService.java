@@ -29,6 +29,29 @@ public class PartWhereUsedService extends RestService {
 			e.printStackTrace();
 			throw e;
 		}
+		finally {
+			logger.debug("Closing session");
+			context.shutdown();
+		}
+		return res;
+	}
+	
+	@POST
+	@Path("/getPartTitleAndRev")
+	@Produces({ "application/json" })
+	public Response getPartTitleAndRev(@Context HttpServletRequest httpReq, String sObjectID) throws Exception {
+		Response res = null;
+		matrix.db.Context context = getAuthenticatedContext(httpReq, false);
+		try {
+			PartWhereUsedUtil oUtil = new PartWhereUsedUtil();
+			res = oUtil.getPartTitleAndRev(context,sObjectID);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw e;
+		}
+		finally {
+			context.shutdown();
+		}
 		return res;
 	}
 }
