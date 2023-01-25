@@ -25,8 +25,7 @@ import javax.ws.rs.core.Response;
 import com.dassault_systemes.platform.restServices.RestService;
 import com.lcd.sapintegration.util.LCDSAPIntegration3DExpConstants;
 import com.lcd.sapintegration.util.LCDSAPIntegrationDataConstants;
-import com.lcd.sapintegration.util.LCDSAPIntegrationGetManAssemblyJson;
-import com.lcd.sapintegration.util.LCDSAPIntegrationGetPhysicalProductJson;
+import com.lcd.sapintegration.util.LCDSAPIntegrationGenrateJsonPayload;
 import com.matrixone.apps.domain.DomainConstants;
 import com.matrixone.apps.domain.DomainObject;
 
@@ -76,12 +75,12 @@ public class LCDSAPIntegrationExportCSVServices extends RestService {
 			String strBomType = (String) bomDetailsMap.get(DomainConstants.SELECT_TYPE);
 
 			if (lcdSAPInteg3DExpConstants.TYPE_MANUFACTURING_ASSEMBLY.equalsIgnoreCase(strBomType)) {
-				jsonObject = LCDSAPIntegrationGetManAssemblyJson.getManAssemblyJSON(context, strBomId, strBomType,
+				jsonObject = LCDSAPIntegrationGenrateJsonPayload.getManAssemblyJSON(context, strBomId, strBomType,
 						strcaId);
 			} else {
-				Map<?, ?> mCadPartDetails = LCDSAPIntegrationGetPhysicalProductJson.getCADPartDetails(context, strBomId,
+				Map<?, ?> mCadPartDetails = LCDSAPIntegrationGenrateJsonPayload.getCADPartDetails(context, strBomId,
 						lcdSAPInteg3DExpConstants);
-				jsonObject = LCDSAPIntegrationGetPhysicalProductJson.getPhysicalProductJSON(context, mCadPartDetails,
+				jsonObject = LCDSAPIntegrationGenrateJsonPayload.getPhysicalProductJSON(context, mCadPartDetails,
 						strConnectionId, lcdSAPInteg3DExpConstants);
 			}
 
@@ -124,7 +123,7 @@ public class LCDSAPIntegrationExportCSVServices extends RestService {
 					} else {
 
 						if (caKey.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_DESCRIPTION)) {
-							strBuildExportCSV.append(LCDSAPIntegrationDataConstants.PROPERTY_DESCRIPTION
+							strBuildExportCSV.append("Change Action Description"
 									+ LCDSAPIntegrationDataConstants.COMMA_SEP + jsonObject.get(caKey).toString()
 									+ LCDSAPIntegrationDataConstants.NEW_LINE);
 						} else if (caKey.equalsIgnoreCase(
@@ -137,7 +136,55 @@ public class LCDSAPIntegrationExportCSVServices extends RestService {
 							strBuildExportCSV
 									.append(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_END_DATE + LCDSAPIntegrationDataConstants.COMMA_SEP
 											+ jsonObject.get(caKey).toString() + LCDSAPIntegrationDataConstants.NEW_LINE);
-						} else
+						} else if (caKey
+								.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_TITLE)) {
+							strBuildExportCSV
+									.append("Change Action Title" + LCDSAPIntegrationDataConstants.COMMA_SEP
+											+ jsonObject.get(caKey).toString() + LCDSAPIntegrationDataConstants.NEW_LINE);
+						}
+						else if (caKey
+								.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_OID)) {
+							strBuildExportCSV
+									.append("Change Action OID" + LCDSAPIntegrationDataConstants.COMMA_SEP
+											+ jsonObject.get(caKey).toString() + LCDSAPIntegrationDataConstants.NEW_LINE);
+						}
+						else if (caKey
+								.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_NAME)) {
+							strBuildExportCSV
+									.append("Change Action name" + LCDSAPIntegrationDataConstants.COMMA_SEP
+											+ jsonObject.get(caKey).toString() + LCDSAPIntegrationDataConstants.NEW_LINE);
+						}
+						else if (caKey
+								.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_CATEGORY_OF_CHANGE)) {
+							strBuildExportCSV
+									.append("Change Action Category_of_Change" + LCDSAPIntegrationDataConstants.COMMA_SEP
+											+ jsonObject.get(caKey).toString() + LCDSAPIntegrationDataConstants.NEW_LINE);
+						}
+						else if (caKey
+								.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_CHANGEDOMAIN)) {
+							strBuildExportCSV
+									.append("Change Action ChangeDomain" + LCDSAPIntegrationDataConstants.COMMA_SEP
+											+ jsonObject.get(caKey).toString() + LCDSAPIntegrationDataConstants.NEW_LINE);
+						}
+						else if (caKey
+								.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_CHANGETYPE)) {
+							strBuildExportCSV
+									.append("Change Action ChangeType" + LCDSAPIntegrationDataConstants.COMMA_SEP
+											+ jsonObject.get(caKey).toString() + LCDSAPIntegrationDataConstants.NEW_LINE);
+						}
+						else if (caKey
+								.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_REASONFORCHANGE)) {
+							strBuildExportCSV
+									.append("Change Action ReasonForChange" + LCDSAPIntegrationDataConstants.COMMA_SEP
+											+ jsonObject.get(caKey).toString() + LCDSAPIntegrationDataConstants.NEW_LINE);
+						}
+						else if (caKey
+								.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_PLATFORM)) {
+							strBuildExportCSV
+									.append("Change Action Platform" + LCDSAPIntegrationDataConstants.COMMA_SEP
+											+ jsonObject.get(caKey).toString() + LCDSAPIntegrationDataConstants.NEW_LINE);
+						}
+						else
 							strBuildExportCSV.append(caKey + LCDSAPIntegrationDataConstants.COMMA_SEP
 									+ jsonObject.get(caKey).toString() + LCDSAPIntegrationDataConstants.NEW_LINE);
 					}
@@ -179,10 +226,16 @@ public class LCDSAPIntegrationExportCSVServices extends RestService {
 		for (String keySet : setPartKeys) {
 			if (keySet.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_OID))
 				strBuildExportCSV.append(LCDSAPIntegrationDataConstants.PROPERTY_OBJECT_UNIQUE_ID).append(LCDSAPIntegrationDataConstants.COMMA_SEP);
+			
 			else if (keySet.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_REL_ID))
 				strBuildExportCSV.append(LCDSAPIntegrationDataConstants.PROPERTY_INSTANCE_UNIQUE_ID).append(LCDSAPIntegrationDataConstants.COMMA_SEP);
+			
 			else if (keySet.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_SAP_MBOM_UPDATED_ON))
 				strBuildExportCSV.append(LCDSAPIntegrationDataConstants.PROPERTY_SAP_FEEDBACK_TIMESTAMP).append(LCDSAPIntegrationDataConstants.COMMA_SEP);
+			
+			else if (keySet.equalsIgnoreCase(LCDSAPIntegrationDataConstants.PROPERTY_UNIT_OF_MEASURE))
+				strBuildExportCSV.append("UoM (Unit Of Measure").append(LCDSAPIntegrationDataConstants.COMMA_SEP);
+			
 			else
 				strBuildExportCSV.append(keySet).append(LCDSAPIntegrationDataConstants.COMMA_SEP);
 		}

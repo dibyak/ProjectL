@@ -70,7 +70,7 @@ public class LCDSAPIntegrationPushToSAPUtil extends RestService {
 						lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE,
 						LCDSAPIntegrationDataConstants.MSG_SCHEDULER_PROCESSING);
 
-				intGetSerivceResponseCode = LCDSAPIntegrationSendJsonToSAP.callGETService(context);
+				intGetSerivceResponseCode = LCDSAPIntegrationCallSAPServices.callGETService(context);
 				intPostSerivceResponseCode = sendFailedBomToSAP(context, intGetSerivceResponseCode, bomId, caId,
 						connectionId, lcdSAPInteg3DExpConstants);
 				String strResponse = String.valueOf(intPostSerivceResponseCode);
@@ -130,25 +130,25 @@ public class LCDSAPIntegrationPushToSAPUtil extends RestService {
 				String strBOMComponentType = (String) bomMap.get(DomainConstants.SELECT_TYPE);
 
 				if (lcdSAPInteg3DExpConstants.TYPE_MANUFACTURING_ASSEMBLY.equalsIgnoreCase(strBOMComponentType)) {
-					joBomPayload = LCDSAPIntegrationGetManAssemblyJson.getManAssemblyJSON(context, bomId,
+					joBomPayload = LCDSAPIntegrationGenrateJsonPayload.getManAssemblyJSON(context, bomId,
 							strBOMComponentType, caId);
 					if (UIUtil.isNotNullAndNotEmpty(joBomPayload.toString())) {
-						intResponseCode = LCDSAPIntegrationSendJsonToSAP.callPostService(context, joBomPayload);
+						intResponseCode = LCDSAPIntegrationCallSAPServices.callPostService(context, joBomPayload);
 					} else {
 						System.out.println("ERROR :: Failed to generate JSON Payload for object id : " + bomId);
 					}
 					LCDSAPIntegrationProcessWebServiceResponse
 							.processWebServiceResponseForManufacturingAssembly(context, intResponseCode, connectionId);
 				} else {
-					Map<?, ?> mCadPartDetails = LCDSAPIntegrationGetPhysicalProductJson.getCADPartDetails(context,
+					Map<?, ?> mCadPartDetails = LCDSAPIntegrationGenrateJsonPayload.getCADPartDetails(context,
 							bomId, lcdSAPInteg3DExpConstants);
 					String strProcurementIntent = (String) mCadPartDetails
 							.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PROCUREMENTINTENT_VPMREFERENCE);
 					if (LCDSAPIntegrationDataConstants.SUBCONTRACT.equalsIgnoreCase(strProcurementIntent)) {
-						joBomPayload = LCDSAPIntegrationGetPhysicalProductJson.getPhysicalProductJSON(context,
+						joBomPayload = LCDSAPIntegrationGenrateJsonPayload.getPhysicalProductJSON(context,
 								mCadPartDetails, connectionId, lcdSAPInteg3DExpConstants);
 						if (UIUtil.isNotNullAndNotEmpty(joBomPayload.toString())) {
-							intResponseCode = LCDSAPIntegrationSendJsonToSAP.callPostService(context, joBomPayload);
+							intResponseCode = LCDSAPIntegrationCallSAPServices.callPostService(context, joBomPayload);
 						} else {
 							System.out.println("ERROR :: Failed to generate JSON Payload for object id : " + bomId);
 						}

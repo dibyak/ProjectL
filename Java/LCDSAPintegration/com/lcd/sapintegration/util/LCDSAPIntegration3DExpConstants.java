@@ -25,7 +25,7 @@ public class LCDSAPIntegration3DExpConstants {
 	public final String ATTRIBUTE_LCD_CAID = PropertyUtil.getSchemaProperty(context, "attribute_LCD_CAID");
 	public final String SELECT_ATTRIBUTE_LCD_CAID = DomainObject.getAttributeSelect(ATTRIBUTE_LCD_CAID);
 	public final String ATTRIBUTE_LCD_MF_SAPMBOMUpdatedOn = PropertyUtil.getSchemaProperty(context, "attribute_LCDMF_ManufacturingAssembly.LCDMF_SAPMBOMUpdatedOn");
-	public final String ATTRIBUTE_LCD_MF_SAP_UNIQUEID = PropertyUtil.getSchemaProperty(context, "LCDMF_ManufacturingAssembly.LCDMF_SAPUniqueID");
+	public final String ATTRIBUTE_LCD_MF_SAP_UNIQUEID = PropertyUtil.getSchemaProperty(context, "attribute_LCDMF_ManufacturingAssembly.LCDMF_SAPUniqueID");
 	public final String SELECT_ATTRIBUTE_LCD_MF_SAP_UNIQUEID = DomainObject.getAttributeSelect(ATTRIBUTE_LCD_MF_SAP_UNIQUEID);
 	public final String SELECT_ATTRIBUTE_LCD_MF_SAPMBOMUpdatedOn = DomainObject.getAttributeSelect(ATTRIBUTE_LCD_MF_SAPMBOMUpdatedOn);
 	public final String RELATIONSHIP_LCD_SAP_BOM_INTERFACE = PropertyUtil.getSchemaProperty(context, "relationship_LCD_SAPBOMInterface");

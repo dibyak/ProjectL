@@ -26,6 +26,7 @@ public class LCDSAPIntegrationDataConstants {
 	public static final String METHOD_REPUSH_FAILED_BOM_COMPONENTS_TO_SAP = "rePushFailedBomComponentsToSAP";
 	public static final String VALUE_PROCESS_STATUS_FLAG_IN_WORK = "In Work";
 	public static final String VALUE_PROCESS_STATUS_FLAG_FAILED = "Failed";
+	public static final String VALUE_PROCESS_STATUS_FLAG_Waiting = "Waiting";
 	public static final String PROPERTY_CHILDREN = "children";
 	public static final String PROPERTY_TYPE = "Type";
 	public static final String PROPERTY_HEADER_PART = "HeaderPart";
@@ -66,16 +67,20 @@ public class LCDSAPIntegrationDataConstants {
 	public static final String VALUE_NOT_APPLICABLE = "NA";
 	public static final String VALUE_FALSE = "FALSE";
 	public static final String MSG_NETWORK_FAILURE = "Network Failure";
+	public static final String MSG_MBOM_CREATED_SUCCESSFULLY = "MBOM Created Successfully";
+	public static final String MSG_EBOM_CREATED_SUCCESSFULLY = "EBOM Creation Successful";
 	public static final String HEADER_LEVEL = "Level";
 	public static final String COMMA_SEP = ",";	
 	public static final String CA_DETAILS = "Change Action Details";
 	public static final String REALIZED_ITEM_DETAILS = "Realized Item Details";
 	public static final String CSV_EXTENSION = ".csv";
 	public static final String UTF_8 = "UTF-8";
+	public static final long TIME_CONVERSION = 86400000;
 	public static final String PROPERTY_SAP_MBOM_UPDATED_ON = "SAP MBOM Updated On";
 	public static final String PROPERTY_OBJECT_UNIQUE_ID = "Object_Unique_ID";
 	public static final String PROPERTY_INSTANCE_UNIQUE_ID = "Instance_Unique_ID";
 	public static final String PROPERTY_SAP_FEEDBACK_TIMESTAMP = "SAP_Feedback_TimeStamp";
+	public static final String LCD_3DX_SAP_INTEGRATION_KEY = "LCD_3DXSAPStringResource_en";
 	
 	private LCDSAPIntegrationDataConstants() {
 		
