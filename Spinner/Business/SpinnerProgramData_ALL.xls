@@ -1,3 +1,3 @@
 Program Name	Registry Name	Description	Type (mql<default>/java/ekl/external)	Execute (immediate<default>/deferred)	Needs Bus Obj (boolean)	Downloadable (boolean)	Piped (boolean)	Pooled (boolean)	Trusted (boolean)	Hidden (boolean)	User	Icon File
-LCD_ConnectBomComponentsWithAnchorObject	LCD_ConnectBomComponentsWithAnchorObject	Trigger on CAD part release and CA release	java	immediate	FALSE	FALSE	FALSE	FALSE	FALSE	FALSE		
-LCD_3DXSAPIntegrationScheduler	LCD_3DXSAPIntegrationScheduler	Scheduler to fetch BOM Components from Anchor Object and send it to SAP	java	immediate	FALSE	FALSE	FALSE	FALSE	FALSE	FALSE		
+LCD_3DXSAPIntegrationScheduler	LCD_3DXSAPIntegrationScheduler	Scheduler to fetch Bom Components from Anchor Object and send it to SAP	java	immediate	FALSE	FALSE	FALSE	FALSE	FALSE	FALSE		
+LCD_ConnectBomComponentsWithAnchorObject	LCD_ConnectBomComponentsWithAnchorObject	Action Trigger on CA relesse and CAD Part Release	java	immediate	FALSE	FALSE	FALSE	FALSE	FALSE	FALSE		
