@@ -35,6 +35,22 @@ table > thead > tr > th:hover {
   max-width: none;
   padding-top: 0;
 }
+.v-snack__wrapper {
+  position: absolute;
+  top: 14px;
+}
+.v-application--is-ltr .v-snack__action {
+  margin-right: 0;
+}
+.v-snack__action {
+  align-self: start;
+}
+.v-progress-linear--absolute {
+  height: 7px !important;
+}
+.v-application .primary {
+  background-color: #78befa !important;
+}
 .title {
   background: #eceff1;
   color: rgb(78, 77, 77);
