@@ -70,6 +70,13 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
                 </v-icon>
               </v-btn>
             </v-form>
+            <v-progress-circular
+              v-if="loadingStatus"
+              :value="20"
+              color="#78befa"
+              indeterminate
+              style="margin: 8px;"
+            ></v-progress-circular>
           </v-card-title>
     
           <v-data-table
@@ -78,7 +85,6 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
             :items-per-page="-1"
             fixed-header
             class="elevation-1 rounded-lg"
-            :loading="loadingStatus"
           >
             <template v-slot:top>
               <v-btn
@@ -229,6 +235,24 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
               </span>
             </template>
           </v-data-table>
+          <v-snackbar v-model="snackbar" color="#fcf8e3" right>
+            <template>
+              <h3 style="color: #8a6d3b; margin: 0;">Warning!</h3>
+              <p
+                style="color: #8a6d3b; font-size: large; margin-top: 10px; margin-bottom: 0;"
+              >
+                {{ snackbarText }}
+              </p>
+            </template>
+
+            <template v-slot:action="{ attrs }">
+              <v-btn icon color="red" text v-bind="attrs" @click="snackbar = false">
+                <v-icon small>
+                  mdi-close
+                </v-icon>
+              </v-btn>
+            </template>
+          </v-snackbar>
         </v-container>
         </div>
       </v-app>
@@ -242,8 +266,8 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
             searchRules: [
               (v) => !!v || "Part Title is required",
               (v) =>
-                v.length >= 13 ||
-                "Part Title must be greater than and equal to 13",
+                v.length >= 12 ||
+                "Part Title must be greater than and equal to 12",
               (v) =>
                 /(^[V,C]\w{2}-[B,C]\w{5}-\w{1,2}-\w{1,4}(\s\d{1,2}\.\d{1,2})?$)|(^[A-Z]\w{2}-[A-Z]\w{5}-\w{1,2}(-\w{2})?(\s\d{1,2}\.\d{1,2})?$)/.test(
                   v
@@ -256,6 +280,8 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
             header: Part_Where_Used_nls.headers,
             result: [],
             loadingStatus: false,
+            snackbar: false,
+            snackbarText: "",
           };
         },
         mounted() {
@@ -355,7 +381,9 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
                   _this.sendRequest();
                 },
                 onFailure: (err) => {
-                  console.log(err.message);
+                  console.log(err);
+                  _this.snackbar = true;
+                  _this.snackbarText = err.message;
                 },
               }
             );
@@ -367,7 +395,7 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
             let bomDataArr = widget.getValue("bomData");
             bomDataArr.forEach((bomData) => {
               let message = {
-                partTitle: this.search.trim(),
+                partTitle: this.search.trim().toUpperCase(),
                 bomData: bomData,
               };
               let _this = this;
@@ -391,7 +419,9 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
                     if (reqNo === 0) _this.loadingStatus = false;
                   },
                   onFailure: (...err) => {
-                    console.log(err);
+                    console.log(err[1]);
+                    _this.snackbar = true;
+                    _this.snackbarText = err[1];
                     reqNo -= 1;
                     if (reqNo === 0) _this.loadingStatus = false;
                   },

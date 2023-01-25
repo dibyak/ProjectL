@@ -104,11 +104,11 @@ public class PartWhereUsedUtil {
 
 				if (sInputPartTitle.contains(" ")) {
 					String[] inputData = sInputPartTitle.split(" ");
-					if (inputData.length > 2) {
-						joInputError.add("message", "Please remove extra blank spaces from input string.");
-						return Response.status(HttpServletResponse.SC_BAD_REQUEST)
-								.entity(joInputError.build().toString()).build();
-					}
+//					if (inputData.length > 2) {
+//						joInputError.add("message", "Please remove extra blank spaces from input string.");
+//						return Response.status(HttpServletResponse.SC_BAD_REQUEST)
+//								.entity(joInputError.build().toString()).build();
+//					}
 					sInputPartTitle = inputData[0];
 					sInputPartRevision = inputData[1];
 				} else {
@@ -116,7 +116,7 @@ public class PartWhereUsedUtil {
 				}
 
 				if (jaBOMData.isEmpty()) {
-					joInputError.add("message", "P-Tree data is missing in the configuration file.");
+					joInputError.add("message", "Tree data is missing in the configuration file.");
 					return Response.status(HttpServletResponse.SC_BAD_REQUEST).entity(joInputError.build().toString())
 							.build();
 				}
@@ -128,7 +128,6 @@ public class PartWhereUsedUtil {
 				BusinessObject busObject = new BusinessObject(sRootType, sRootName, sRootRevision, "vplm");
 				System.out.println(" Part Where Used :: bus exist? - "+busObject.exists(context));
 				if (busObject.exists(context)) {
-					System.out.println("Inside Business Object !!");
 					DomainObject domObjRootPart = DomainObject.newInstance(context, busObject.getObjectId(context));
 
 					Map<?, ?> mRootInfo = domObjRootPart.getInfo(context, busSelectList);
@@ -188,10 +187,7 @@ public class PartWhereUsedUtil {
 							hasMatch);
 					res = Response.status(HttpServletResponse.SC_OK).entity(jsonArrayResult.build().toString()).build();
 				} else {
-					System.out.println("Outside Business Object !!");
-					joInputError.add("message",
-							"P-Tree " + sRootName + " " + sRootRevision + " is not exist in the system.");
-					return Response.status(HttpServletResponse.SC_BAD_REQUEST).entity(joInputError.build().toString())
+					return Response.status(HttpServletResponse.SC_BAD_REQUEST).entity("Tree " + sRootName + " " + sRootRevision + " does not exist in the system.")
 							.build();
 				}
 			}
@@ -276,14 +272,11 @@ public class PartWhereUsedUtil {
 				jsonReader = Json.createReader(new StringReader(sObjectID));
 				JsonObject jsonObjInput = jsonReader.readObject();
 				sInputObjectId = jsonObjInput.getString("ObjectId");
-				System.out.println("sInputObjectId-----------"+sInputObjectId);
 				
 				DomainObject domObj = DomainObject.newInstance(context, sInputObjectId);
 				Map<?, ?> mObjInfo = domObj.getInfo(context, slObjectSelect);
 				sObjTitle = (String) mObjInfo.get(SELECT_ATTRIBUTE_PLMENTITY_V_NAME);
 				sObjRevision = (String) mObjInfo.get(DomainConstants.SELECT_REVISION);
-				System.out.println("sObjTitle-----------"+sObjTitle);
-				System.out.println("sObjRevision-----------"+sObjRevision);
 				jObjDetail.add("objectTitle", sObjTitle);
 				jObjDetail.add("objectRevision", sObjRevision);
 				res = Response.status(HttpServletResponse.SC_OK).entity(jObjDetail.build().toString()).build();
