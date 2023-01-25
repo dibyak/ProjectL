@@ -1,0 +1,4 @@
+Schema Type	Schema Name	State (for Policy)	Trigger Event	Trigger Type (check / override / action)	Program	Input
+policy	VPLM_SMB_Definition	IN_WORK	promote	action	emxTriggerManager	LCD_Policy_VPLM_SMB_Definition_IN_WORKPromoteAction
+policy	VPLM_SMB_Definition	FROZEN	promote	action	emxTriggerManager	LCD_Policy_VPLM_SMB_Definition_FROZENPromoteAction
+policy	Change Action	In Approval	promote	action	emxTriggerManager	PolicyChangeActionStateInApprovalPromoteAction

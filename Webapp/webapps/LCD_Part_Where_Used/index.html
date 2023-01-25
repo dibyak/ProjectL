@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:widget="http://www.netvibes.com/ns/"
+>
+  <head>
+    <title>Search App</title>
+    <meta name="author" content="Bhavya" />
+    <meta name="description" content="Bhavya Search App" />
+    <meta charset="UTF-8" />
+    <link rel="webappsBaseUrl" href="../../" />
+    <script src="../../AMDConf.js"></script>
+    <script type="text/javascript">
+      require(["LCD/LCD_Part_Where_Used/assets/scripts/main"], function (
+        myWidget
+      ) {
+        widget.addEvent("onLoad", myWidget.onLoad);
+        widget.addEvent("onRefresh", myWidget.onRefresh);
+      });
+    </script>
+
+    <widget:preferences>
+      <widget:preference
+        name="Name"
+        type="list"
+        label="State"
+        defaultValue="All"
+      >
+        <widget:option label="All" value="All"></widget:option>
+      </widget:preference>
+    </widget:preferences>
+  </head>
+
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

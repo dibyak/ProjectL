@@ -1,0 +1,6 @@
+{
+	
+	"webserviceURLToGetAllBOMComponents": "/LCDSAPIntegrationModeler/lcdSAPIntegrationServices/getSAPTransferDetailsOfAnchoredAssemblies",
+	"webserviceURLForRepush": "/LCDSAPIntegrationModeler/lcdSAPIntegrationServices/pushAssemblyToSAP",
+	"webserviceURLToExportPartData": "/LCDSAPIntegrationModeler/LCDSAPIntegrationExportCSVService/exportCSV"
+}

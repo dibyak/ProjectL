@@ -1,0 +1,19 @@
+{
+  "bomData": [
+    {
+      "type": "VPMReference",
+      "name": "prd-atieva-01901015",
+      "revision": "1.1"
+    },
+    {
+      "type": "VPMReference",
+      "name": "prd-atieva-01910643",
+      "revision": "1.1"
+    },
+    {
+      "type": "VPMReference",
+      "name": "prd-atieva-00782907",
+      "revision": "2.1"
+    }
+  ]
+}

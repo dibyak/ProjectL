@@ -1,0 +1,97 @@
+#droppableArea {
+  height: 100%;
+}
+.v-application {
+  height: 100%;
+}
+.refreshClass {
+  text-align: right;
+  margin-bottom: 0 !important;
+}
+.form {
+  display: flex;
+  flex-grow: 1;
+}
+table > thead > tr > th {
+  background-color: #005685 !important;
+  color: #fff !important;
+  min-width: 180px;
+  height: 44px !important;
+}
+.navClass {
+  width: 1200px;
+}
+.levelClass {
+  min-width: 125px;
+  width: 125px !important;
+}
+.v-data-table-header__icon {
+  color: #f5f5f5 !important;
+}
+table > thead > tr > th:hover {
+  color: #78befa !important;
+}
+.container {
+  max-width: none;
+  padding-top: 0;
+}
+.title {
+  background: #eceff1;
+  color: rgb(78, 77, 77);
+  border: 1px solid grey;
+  border-radius: 5px;
+  min-width: 100%;
+  line-height: 3rem !important;
+  text-align: center;
+  margin: 2px;
+}
+.v-card__title {
+  width: 30%;
+  margin: auto;
+  padding: 16px 0 0 0;
+  align-items: start;
+}
+.partLabel {
+  margin-top: 4px !important;
+}
+.searchBtn {
+  margin-top: 4px !important;
+}
+.exportBtn {
+  color: #fff !important;
+}
+.exportBtn:hover {
+  color: #78befa !important;
+}
+@media screen and (max-width: 1500px) {
+  .v-card__title {
+    width: 50%;
+  }
+}
+@media screen and (max-width: 800px) {
+  .v-card__title {
+    width: 80%;
+  }
+}
+.v-application .title {
+  font-size: 1.5rem !important;
+}
+.v-input .v-label {
+  top: auto;
+}
+.v-text-field--outlined > .v-input__control > .v-input__slot {
+  min-height: 45px;
+}
+.v-text-field--outlined .v-input__append-outer {
+  margin-top: 12px;
+}
+.module a:link {
+  color: #1976d2;
+}
+.module a:visited {
+  color: #005685;
+}
+.v-data-table__wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+}
