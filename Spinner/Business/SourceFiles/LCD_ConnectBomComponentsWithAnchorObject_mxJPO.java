@@ -16,6 +16,7 @@ import com.matrixone.apps.domain.DomainObject;
 import com.matrixone.apps.domain.DomainRelationship;
 import com.matrixone.apps.domain.util.PropertyUtil;
 import com.matrixone.apps.framework.ui.UIUtil;
+import com.matrixone.apps.domain.util.ContextUtil;
 
 import matrix.db.BusinessObject;
 import matrix.db.Context;
@@ -74,6 +75,12 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 
 		try {
 		String strCAId = args[0];
+		
+		for(int i =0;i< args.length ; i++) {
+			System.out.println("connectManAssemblyToAnchorObject-----ARG "+i+" - "+args[i]);
+		}
+
+
 		BusinessObject busObjAchor = new BusinessObject(TYPE_LCD_BOM_ANCHOR_OBJECT, // String Type
 				NAME_LCD_ANCHOR_OBJECT, // String Name
 				REV_LCD_ANCHOR_OBJECT, // String Revision
@@ -113,8 +120,7 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 						String strRealizedID = (String) realizedItemMap.get(DomainConstants.SELECT_ID);
 
 						if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strRealizedItemType)) {
-							DomainRelationship relEbom = domObjAnchor.addRelatedObject(context,
-									new RelationshipType(REL_LCD_SAP_BOM_INTERFACE), false, strRealizedID);
+							DomainRelationship relEbom = domObjAnchor.addRelatedObject(context,new RelationshipType(REL_LCD_SAP_BOM_INTERFACE), false, strRealizedID);
 							relEbom.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, VALUE_STATUS_WAITING);
 							relEbom.setAttributeValue(context, ATTR_LCD_CAID, strCAId);
 						}
@@ -139,6 +145,9 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 	public void connectPhysicalProductToAnchorObject(Context context, String[] args) throws Exception {
 		System.out.println("connectPhysicalProductToAnchorObject-----START");
 		try {
+		for(int i =0;i< args.length ; i++) {
+			System.out.println("connectPhysicalProductToAnchorObject---ARG "+i+" - "+args[i]);
+		}
 		String strObjectId = args[0];
 		String strNextState = args[1];
 
@@ -172,8 +181,9 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 
 				DomainRelationship relObjAnchor = domObjAnchor.addRelatedObject(context,
 						new RelationshipType(REL_LCD_SAP_BOM_INTERFACE), false, strCadPartId);
+			    ContextUtil.pushContext(context);
 				relObjAnchor.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, VALUE_STATUS_WAITING);
-
+				ContextUtil.popContext(context);
 			}
 		}
 			
