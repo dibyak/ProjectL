@@ -1,4 +1,3 @@
 Program Name	Registry Name	Description	Type (mql<default>/java/ekl/external)	Execute (immediate<default>/deferred)	Needs Bus Obj (boolean)	Downloadable (boolean)	Piped (boolean)	Pooled (boolean)	Trusted (boolean)	Hidden (boolean)	User	Icon File
-emxLibraryCentralUtil	emxLibraryCentralUtil	LibraryCentral Utility JPO	java	immediate	FALSE	FALSE	FALSE	FALSE	FALSE	FALSE		
-LCD_Constants	LCD_Constants	Constants for LCD_3DXSAPIntegration	java									
-LCD_3DXSAPIntegration	LCD_3DXSAPIntegration	To Send BOM Components to SAP	java									
+LCD_3DXSAPIntegrationScheduler	LCD_3DXSAPIntegrationScheduler	Scheduler to fetch Bom Components from Anchor Object and send it to SAP	java	immediate	FALSE	FALSE	FALSE	FALSE	FALSE	FALSE		
+LCD_ConnectBomComponentsWithAnchorObject	LCD_ConnectBomComponentsWithAnchorObject	Action Trigger on CA relesse and CAD Part Release	java	immediate	FALSE	FALSE	FALSE	FALSE	FALSE	FALSE		
