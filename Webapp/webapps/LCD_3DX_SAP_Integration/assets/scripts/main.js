@@ -52,7 +52,6 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
     },
     webserviceForRepush: async function () {
       var _this = this;
-    
       for (let i = 0; i < _this.vueapp.selected.length; i++) {
         var Ca_ID = _this.vueapp.selected[i].CAID;
         var BOM_Comp_ID = _this.vueapp.selected[i].BOMComponentID;
@@ -199,7 +198,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
             _this.vueapp.snackbarColor = "error";
             _this.vueapp.snackbarIcon = "mdi-close-circle";
             _this.vueapp.snackbarnsgforFailedReport ="Something went wrong.";
-            _this.vueapp.snackbar = true;
+            _this.vueapp.snackbarExport = true;
           },
         }
       );
@@ -219,7 +218,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
       </div>
       <v-container>
       <div class="snackbar_div">
-        <v-snackbar v-model="snackbar" v-for="item in snackbarMsg" :key="item" :color="snackbarColor" top right :timeout="4000">
+        <v-snackbar v-model="snackbar" v-for="(item, key) in snackbarMsg" :key="key" :color="snackbarColor" top right :timeout="4000">
           <p><v-icon>{{snackbarIcon}}</v-icon>Name : {{item.BOMComponentName}}<br><span class="space">Status : {{item.status}}</span></p>
           <template v-slot:action="{ attrs }">
           <v-btn
@@ -232,14 +231,14 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
           </v-btn>
         </template>
         </v-snackbar>
-        <v-snackbar v-model="snackbar" :color="snackbarColor" top right :timeout="4000">
+        <v-snackbar  v-model="snackbarExport" :color="snackbarColor" top right :timeout="4000">
           <p><v-icon>{{snackbarIcon}}</v-icon>{{snackbarnsgforFailedReport}}</p>
           <template v-slot:action="{ attrs }">
           <v-btn
             text
             color="white"
             v-bind="attrs"
-            @click="snackbar = false"
+            @click="snackbarExport = false"
           >
           <v-icon>mdi-close</v-icon>
           </v-btn>
@@ -2077,6 +2076,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
           arrObj: [],
           failedStatus: false,
           snackbar: false,
+          snackbarExport: false,
           type: 1,
           // active: true,
           BOMComponentName: "",
@@ -2116,32 +2116,32 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
           // },
           methodToAddSrNoInAllTab() {
             return this.SearchMethod.map((d, index) => ({
-              ...d,
               sno: index + 1,
+              ...d,
             }));
           },
           methodToAddSrNoInWaitingTable() {
             return this.methodToGetWaitingTable.map((d, index) => ({
-              ...d,
               sno: index + 1,
+              ...d,
             }));
           },
           methodToAddSrNoInInWorkTable() {
             return this.methodToGetInWorkTable.map((d, index) => ({
-              ...d,
               sno: index + 1,
+              ...d,
             }));
           },
           methodToAddSrNoInCompleteTable() {
             return this.methodToGetSuccessTable.map((d, index) => ({
-              ...d,
               sno: index + 1,
+              ...d,
             }));
           },
           methodToAddSrNoInFailedTable() {
             return this.methodToGetFailedTable.map((d, index) => ({
-              ...d,
               sno: index + 1,
+              ...d,
             }));
           },
           SearchMethod() {
@@ -2260,6 +2260,13 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
                     }
                   }
                   else if (index[0] == 'sno') {
+                    if (!isDesc[0]) {
+                      return b[index] - a[index];
+                    } else {
+                      return a[index] - b[index];
+                    }
+                  }
+                  else if (index[0] == 'revision') {
                     if (!isDesc[0]) {
                       return b[index] - a[index];
                     } else {
@@ -2395,6 +2402,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
             );
           },
           rePushToSAPMethod() {
+            this.snackbarMsg = [];
             this.SearchMethod.map((x) => {
               this.selected.map((y) => {
                 if (x.BOMComponentID == y.BOMComponentID) {
@@ -2404,7 +2412,6 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
             });
             myWidget.webserviceForRepush();
             this.failedStatus = false;
-            this.snackbarMsg = [];
           },
           clear() {
             this.arrFilterData = this.BOMComponentsReceivedFromWS;
