@@ -52,7 +52,6 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
     },
     webserviceForRepush: async function () {
       var _this = this;
-      debugger
       for (let i = 0; i < _this.vueapp.selected.length; i++) {
         var Ca_ID = _this.vueapp.selected[i].CAID;
         var BOM_Comp_ID = _this.vueapp.selected[i].BOMComponentID;
@@ -2315,7 +2314,6 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
             downloadLink.click();
           },
           export_table_to_csv_method(arrData) {
-            debugger
             let arrData1 = arrData.map((index) => {
               for (let key in index) {
                 index[key] = "\"" + index[key] + "\""
