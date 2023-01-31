@@ -9,7 +9,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -36,9 +35,6 @@ import com.matrixone.apps.domain.util.MapList;
 import com.matrixone.apps.domain.util.MqlUtil;
 import com.matrixone.apps.framework.ui.UIUtil;
 
-import matrix.db.BusinessObject;
-import matrix.db.Context;
-import matrix.util.MatrixException;
 import matrix.util.Pattern;
 import matrix.util.StringList;
 
@@ -54,7 +50,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 	private static HashMap<String, JsonObjectBuilder> changeActionMap = new HashMap<>();
 
 	public static JsonObject getManAssemblyJSON(matrix.db.Context context, String strBOMComponentId,
-			String strBOMComponentType, String caId) throws Exception {
+			String strBOMComponentType, String caId, String connectionId) throws Exception {
 
 		JsonObject jEachPayloadObj = null;
 		LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants = new LCDSAPIntegration3DExpConstants(context);
@@ -89,7 +85,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 						if (changeActionMap.containsKey(caId)) {
 							jEachPayloadBuilder = changeActionMap.get(caId);
 						} else {
-							jEachPayloadBuilder = ChangeActionJSONPayload(context, caId, lcdSAPInteg3DExpConstants);
+							jEachPayloadBuilder = ChangeActionJSONPayload(context, caId, connectionId,lcdSAPInteg3DExpConstants);
 							changeActionMap.put(caId, jEachPayloadBuilder);
 						}
 
@@ -178,7 +174,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 	 *         JsonObjectBuilder
 	 * @throws Exception
 	 */
-	private static JsonObjectBuilder ChangeActionJSONPayload(matrix.db.Context context, String caId,
+	private static JsonObjectBuilder ChangeActionJSONPayload(matrix.db.Context context, String caId, String strConnectionId,
 			LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants) throws Exception {
 
 		// STEP : Creating JSON object Builder to add the change action object details
@@ -191,7 +187,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 						LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 
 				jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_OID,
-						LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
+						strConnectionId);
 
 				jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_NAME,
 						LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
@@ -280,8 +276,8 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_TITLE,
 							mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_CHANGE_ACTION_TITLE));
 
-				if (UIUtil.isNotNullAndNotEmpty(changeActionObjId))
-					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_OID, changeActionObjId);
+				if (UIUtil.isNotNullAndNotEmpty(strConnectionId))
+					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_OID, strConnectionId);
 				else
 					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_OID, " ");
 
@@ -1012,7 +1008,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 		try {
 
 			// STEP : Get Change Action Header
-			JsonObjectBuilder jEachSubContractPayloadBuilder = ChangeActionJSONPayload(context, null,
+			JsonObjectBuilder jEachSubContractPayloadBuilder = ChangeActionJSONPayload(context, null, strConnectionId,
 					lcdSAPInteg3DExpConstants);
 			if (null != jEachSubContractPayloadBuilder) {
 				// STEP : Get SubContract part Header

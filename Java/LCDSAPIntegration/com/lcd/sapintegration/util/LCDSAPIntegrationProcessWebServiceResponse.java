@@ -25,7 +25,7 @@ public class LCDSAPIntegrationProcessWebServiceResponse {
 
 			DomainRelationship domRelBomConnectedToAnchorObj = DomainRelationship.newInstance(context, strConnectionId);
 
-			if (intResponseCode == 200) {
+			if (intResponseCode == 200 || intResponseCode == 201 || intResponseCode == 202) {
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG, LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_IN_WORK);
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE,
 						LCDSAPIntegrationDataConstants.MSG_JSON_FORMAT_VALIDATION_COMPLETED);
@@ -61,7 +61,7 @@ public class LCDSAPIntegrationProcessWebServiceResponse {
 			ContextUtil.pushContext(context);
 			DomainRelationship domRelBomConnectedToAnchorObj = DomainRelationship.newInstance(context, strConnectionId);
 
-			if (intResponseCode == 200) {
+			if (intResponseCode == 200 || intResponseCode == 201 || intResponseCode == 202) {
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG, LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_IN_WORK);
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE,
 						LCDSAPIntegrationDataConstants.MSG_JSON_FORMAT_VALIDATION_COMPLETED);
