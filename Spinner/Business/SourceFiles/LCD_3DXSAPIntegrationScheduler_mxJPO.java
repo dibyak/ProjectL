@@ -144,9 +144,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 			JsonObject joBomPayload = null;
 
 			loggerInitialization(context, lcdSAPInteg3DExpConstants);
-			callGETService(context, lcdSAPInteg3DExpConstants);
+			//callGETService(context, lcdSAPInteg3DExpConstants);
 
-			if (UIUtil.isNotNullAndNotEmpty(xcsrfToken) && UIUtil.isNotNullAndNotEmpty(cookie)) {
+			//if (UIUtil.isNotNullAndNotEmpty(xcsrfToken) && UIUtil.isNotNullAndNotEmpty(cookie)) {
 				while (iterMAsMaplist.hasNext()) {
 					Map<?, ?> item = (Map<?, ?>) iterMAsMaplist.next();
 					String strConnectionId = (String) (item.get(DomainRelationship.SELECT_ID));
@@ -192,9 +192,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 					}
 
 				}
-			} else {
-				logger.writeLog("ERROR : Failed to get x-csrf-token and cookies from SAP Webservice ");
-			}
+			//} else {
+			//	logger.writeLog("ERROR : Failed to get x-csrf-token and cookies from SAP Webservice ");
+			//}
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1612,22 +1612,40 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 	private int callPostService(Context context, JsonObject jEachPayloadObj, LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants) throws Exception {
 		logger.writeLog("callPostService()..... START");
 		// STEP : Creating HttpPost Object with SAP webService URL
+		url = EnoviaResourceBundle.getProperty(context, lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,
+					"LCD_3DXSAPStringResource_en.SAP.WebServiceURL.DEV", language);
+					
+	    logger.writeLog("SAP PO Webservice URL ==  " + url);	
 		HttpPost postURL = new HttpPost(url);
+		httpClient = HttpClients.createDefault();
 		String result = null;
 		int intResponseCode = 0;
 		try {
-			// STEP : Creating request header for SAP WebService POST Method call
-			String xcsrftoken = EnoviaResourceBundle.getProperty(context, lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,
-					"LCD_3DXSAPStringResource_en.SAP.XCSRFTOKEN", language);
-			String cookie = EnoviaResourceBundle.getProperty(context, lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,
-					"LCD_3DXSAPStringResource_en.SAP.COOKIE", language);
-			String contentType = EnoviaResourceBundle.getProperty(context, lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,
-					"LCD_3DXSAPStringResource_en.SAP.CONTENTTYPE", language);
+			//  STEP : Creating request header for SAP WebService POST Method call
+		    //	String xcsrftoken = EnoviaResourceBundle.getProperty(context, lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,"LCD_3DXSAPStringResource_en.SAP.XCSRFTOKEN", language);
+		    //	String cookie = EnoviaResourceBundle.getProperty(context, lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,"LCD_3DXSAPStringResource_en.SAP.COOKIE", language);
+			
+			String userName = EnoviaResourceBundle.getProperty(context, lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,
+					"LCD_3DXSAPStringResource_en.SAP.UserName", language);
 
+			String password = EnoviaResourceBundle.getProperty(context, lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,
+					"LCD_3DXSAPStringResource_en.SAP.Password", language);
+
+			
+
+			String contentType = EnoviaResourceBundle.getProperty(context, lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,"LCD_3DXSAPStringResource_en.SAP.CONTENTTYPE", language);
+
+			String authString = userName + ":" + password;
+			String authStringEnc = BASE64_ENCODER.encodeToString(authString.getBytes());
+
+			// STEP : Creating HttpGet Object with SAP webService UR
+			String authorization = EnoviaResourceBundle.getProperty(context, lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,"LCD_3DXSAPStringResource_en.SAP.Authorization", language);
+			
 			StringEntity params = new StringEntity(jEachPayloadObj.toString());
-			postURL.setHeader(cookie, cookie);
+			
+			// STEP : Creating request header for SAP WebService GET Method call
+			postURL.setHeader(authorization, "Basic " + authStringEnc);
 			postURL.setHeader(contentType, "application/json");
-			postURL.setHeader(xcsrftoken, xcsrfToken);
 			postURL.setEntity(params);
 
 			// STEP : Invoking SAP webService with Post Method
@@ -1669,7 +1687,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 
 			DomainRelationship domRelBomConnectedToAnchorObj = DomainRelationship.newInstance(context, strConnectionId);
 
-			if (intResponseCode == 200) {
+			if (intResponseCode == 200 || intResponseCode == 201 || intResponseCode == 202) {
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG, LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_IN_WORK);
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE,
 						LCDSAPIntegrationDataConstants.MSG_JSON_FORMAT_VALIDATION_COMPLETED);
@@ -1704,7 +1722,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 			ContextUtil.pushContext(context);
 			DomainRelationship domRelBomConnectedToAnchorObj = DomainRelationship.newInstance(context, strConnectionId);
 
-			if (intResponseCode == 200) {
+			if (intResponseCode == 200 || intResponseCode == 201 || intResponseCode == 202 ) {
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG, LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_IN_WORK);
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE,
 						LCDSAPIntegrationDataConstants.MSG_JSON_FORMAT_VALIDATION_COMPLETED);
