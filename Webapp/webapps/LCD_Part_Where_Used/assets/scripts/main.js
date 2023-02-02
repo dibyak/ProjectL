@@ -60,7 +60,7 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
                 icons
                 depressed
                 rounded
-                :disabled="!formValidity"
+                :disabled="!formValidity || loadingStatus"
                 color="white"
                 type="submit"
                 class="searchBtn"
@@ -235,24 +235,26 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
               </span>
             </template>
           </v-data-table>
-          <v-snackbar v-model="snackbar" color="#fcf8e3" right>
-            <template>
-              <h3 style="color: #8a6d3b; margin: 0;">Warning!</h3>
-              <p
-                style="color: #8a6d3b; font-size: large; margin-top: 10px; margin-bottom: 0;"
-              >
-                {{ snackbarText }}
-              </p>
-            </template>
+          <div id="snackbar_div">
+            <v-snackbar v-model="snackbar" v-for="(msg,key) in snackbarMsg" :key="key" color="#fcf8e3" right>
+              <template>
+                <h3 style="color: #8a6d3b; margin: 0;">Warning!</h3>
+                <p
+                  style="color: #8a6d3b; font-size: large; margin-top: 10px; margin-bottom: 0;"
+                >
+                  {{ msg }}
+                </p>
+              </template>
 
-            <template v-slot:action="{ attrs }">
-              <v-btn icon color="red" text v-bind="attrs" @click="snackbar = false">
-                <v-icon small>
-                  mdi-close
-                </v-icon>
-              </v-btn>
-            </template>
-          </v-snackbar>
+              <template v-slot:action="{ attrs }">
+                <v-btn icon color="red" text v-bind="attrs" @click="snackbar = false">
+                  <v-icon small>
+                    mdi-close
+                  </v-icon>
+                </v-btn>
+              </template>
+            </v-snackbar>
+          </div>
         </v-container>
         </div>
       </v-app>
@@ -281,7 +283,7 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
             result: [],
             loadingStatus: false,
             snackbar: false,
-            snackbarText: "",
+            snackbarMsg: [],
           };
         },
         mounted() {
@@ -354,15 +356,12 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
             });
           },
           getTitleRevision(objectId) {
+            this.snackbarMsg = [];
             let message = {
               ObjectId: objectId,
             };
             let _this = this;
             let _myWidget = myWidget;
-            console.log(
-              _myWidget._3dspaceUrl +
-                Part_Where_Used_webservicedetails.getPartTitleAndRev
-            );
             WAFData.authenticatedRequest(
               _myWidget._3dspaceUrl +
                 Part_Where_Used_webservicedetails.getPartTitleAndRev,
@@ -381,16 +380,19 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
                   _this.sendRequest();
                 },
                 onFailure: (err) => {
-                  console.log(err);
+                  if (err[1]) {
+                    _this.snackbarMsg.push(err[1]);
+                  } else {
+                    _this.snackbarMsg.push(err[0].message);
+                  }
                   _this.snackbar = true;
-                  _this.snackbarText = err.message;
                 },
               }
             );
           },
           sendRequest() {
-            this.result = [];
             this.loadingStatus = true;
+            this.result = [];
             let reqNo = 0;
             let bomDataArr = widget.getValue("bomData");
             bomDataArr.forEach((bomData) => {
@@ -419,9 +421,15 @@ define("LCD/LCD_Part_Where_Used/assets/scripts/main", [
                     if (reqNo === 0) _this.loadingStatus = false;
                   },
                   onFailure: (...err) => {
-                    console.log(err[1]);
+                    if (err[1]) {
+                      _this.snackbarMsg.push(err[1]);
+                    } else {
+                      _this.snackbarMsg.push(err[0].message);
+                    }
                     _this.snackbar = true;
-                    _this.snackbarText = err[1];
+                    setTimeout(function () {
+                      _this.snackbarMsg.shift();
+                    }, 5000);
                     reqNo -= 1;
                     if (reqNo === 0) _this.loadingStatus = false;
                   },
