@@ -7,7 +7,12 @@
     },
     {
       "type": "VPMReference",
-      "name": "prd-atieva-01910643",
+      "name": "prd-atieva-01910643_failed",
+      "revision": "1.1"
+    },
+    {
+      "type": "VPMReference",
+      "name": "prd-atieva-01910642",
       "revision": "1.1"
     },
     {
