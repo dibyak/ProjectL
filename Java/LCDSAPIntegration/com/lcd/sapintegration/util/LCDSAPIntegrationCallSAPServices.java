@@ -1,6 +1,7 @@
 package com.lcd.sapintegration.util;
 
 import java.util.Base64;
+import java.util.logging.Logger;
 
 import javax.json.JsonObject;
 
@@ -12,6 +13,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 
 import com.matrixone.apps.domain.util.EnoviaResourceBundle;
 import com.matrixone.apps.domain.util.FrameworkException;
@@ -20,30 +22,31 @@ import com.matrixone.apps.framework.ui.UIUtil;
 import matrix.db.Context;
 
 public class LCDSAPIntegrationCallSAPServices {
-	
+
 	public static final String LCD_3DX_SAP_INTEGRATION_KEY = "LCD_3DXSAPStringResource_en";
 	private static final Base64.Encoder BASE64_ENCODER = Base64.getEncoder();
+	static Logger loggerDebug = Logger.getLogger("LCDSAPIntegrationCallSAPServices");
 
 	private static String language;
 	private static String url;
 	private static String xcsrfToken;
 	private static String cookie;
 	private static CloseableHttpClient httpClient;
-	
+
 	/**
 	 * Invoking SAP Web service with GET Method to get the x-csrf-token and cookies
 	 * error or send empty string.
 	 *
 	 * @param CloseableHttpClient
 	 * @return String Array in arguments ( x-csrf-token and cookies )
-	 * @throws FrameworkException 
+	 * @throws FrameworkException
 	 * @throws Exception
 	 */
 	public static int callGETService(Context context) throws FrameworkException {
-		System.out.println("callGETService()..... START");
+		loggerDebug.info("callGETService()..... START");
 
 		language = context.getSession().getLanguage();
-		
+
 		String strStatusLine = null;
 		int responseCode = 0;
 
@@ -100,17 +103,16 @@ public class LCDSAPIntegrationCallSAPServices {
 					cookie = strCookie;
 				}
 			} else {
-				System.out.println("GET request Failed , Response code ==  " + response.getStatusLine().getStatusCode());
-				System.out.println("GET request Failed , Response Status Line ==  " + strStatusLine);
+				loggerDebug.info("GET request Failed , Response code ==  " + response.getStatusLine().getStatusCode());
+				loggerDebug.info("GET request Failed , Response Status Line ==  " + strStatusLine);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		System.out.println("callGETService()..... END");
+		loggerDebug.info("callGETService()..... END");
 		return responseCode;
 	}
-	
-	
+
 	/**
 	 * This Method Accepts xcsrfToken and cookie retrieved from GET SAP webService
 	 * Call calls Custom created Post web service in SAP
@@ -122,39 +124,74 @@ public class LCDSAPIntegrationCallSAPServices {
 	 * @return web service response
 	 * @throws Exception
 	 */
-	public static int callPostService(Context context, JsonObject jEachPayloadObj) throws NullPointerException {
-		System.out.println("callPostService()..... START");
-		// STEP : Creating HttpPost Object with SAP webService URL
-		HttpPost postURL = new HttpPost(url);
+	public static int callPostService(Context context, JsonObject jEachPayloadObj,
+			LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants) throws Exception {
+		loggerDebug.info("callPostService()..... START");
 		int intResponseCode = 0;
 		try {
+			// STEP : Creating HttpPost Object with SAP webService URL
+			url = EnoviaResourceBundle.getProperty(context, lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,
+					"LCD_3DXSAPStringResource_en.SAP.WebServiceURL.DEV", language);
+
+			loggerDebug.info("SAP PO Webservice URL ==  " + url);
+			HttpPost postURL = new HttpPost(url);
+			httpClient = HttpClients.createDefault();
+			String result = null;
+			
+
 			// STEP : Creating request header for SAP WebService POST Method call
-			String xcsrftoken = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
-					"LCD_3DXSAPStringResource_en.SAP.XCSRFTOKEN", language);
-//			String Cookie = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
-//					"LCD_3DXSAPStringResource_en.SAP.COOKIE", language);
-			String contentType = EnoviaResourceBundle.getProperty(context, LCD_3DX_SAP_INTEGRATION_KEY,
+			// String xcsrftoken = EnoviaResourceBundle.getProperty(context,
+			// lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,"LCD_3DXSAPStringResource_en.SAP.XCSRFTOKEN",
+			// language);
+			// String cookie = EnoviaResourceBundle.getProperty(context,
+			// lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,"LCD_3DXSAPStringResource_en.SAP.COOKIE",
+			// language);
+
+			String userName = EnoviaResourceBundle.getProperty(context,
+					lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY, "LCD_3DXSAPStringResource_en.SAP.UserName",
+					language);
+
+			String password = EnoviaResourceBundle.getProperty(context,
+					lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY, "LCD_3DXSAPStringResource_en.SAP.Password",
+					language);
+
+			String contentType = EnoviaResourceBundle.getProperty(context,
+					lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,
 					"LCD_3DXSAPStringResource_en.SAP.CONTENTTYPE", language);
 
+			String authString = userName + ":" + password;
+			String authStringEnc = BASE64_ENCODER.encodeToString(authString.getBytes());
+
+			// STEP : Creating HttpGet Object with SAP webService UR
+			String authorization = EnoviaResourceBundle.getProperty(context,
+					lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,
+					"LCD_3DXSAPStringResource_en.SAP.Authorization", language);
+
 			StringEntity params = new StringEntity(jEachPayloadObj.toString());
-			postURL.setHeader(cookie, cookie);
+
+			// STEP : Creating request header for SAP WebService GET Method call
+			postURL.setHeader(authorization, "Basic " + authStringEnc);
 			postURL.setHeader(contentType, "application/json");
-			postURL.setHeader(xcsrftoken, xcsrfToken);
 			postURL.setEntity(params);
 
 			// STEP : Invoking SAP webService with Post Method
 			HttpResponse response = httpClient.execute(postURL);
-			System.out.println("postURL -- " + postURL);
+			loggerDebug.info("postURL -- " + postURL);
 			intResponseCode = response.getStatusLine().getStatusCode();
+
 			if (intResponseCode == HttpStatus.SC_OK) { // success
 				// STEP : Collecting the acknowledgement from SAP webService
+				loggerDebug.info(
+						"POST request successful , response code ==  " + response.getStatusLine().getStatusCode());
 			} else {
-				System.out.println("POST request failed , response code ==  " + response.getStatusLine().getStatusCode());
+				loggerDebug.info("POST request failed , response code ==  " + response.getStatusLine().getStatusCode());
 			}
+			result = EntityUtils.toString(response.getEntity());
+			loggerDebug.info("POST request Result--------------- " + result);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		System.out.println("callPostService()..... END");
+		loggerDebug.info("callPostService()..... END");
 		return intResponseCode;
 	}
 }
