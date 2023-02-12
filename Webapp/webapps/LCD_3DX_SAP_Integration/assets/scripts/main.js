@@ -326,7 +326,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
                   :headers="headersForSeperateTab"
                   :items="methodToAddSrNoInWaitingTable"
                   :items-per-page="-1"
-                  item-key="BOMComponentName"
+                  item-key="sno"
                   :search="search"
                   fixed-header
                   height="600px"
@@ -682,7 +682,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
                   :headers="headersForSeperateTab"
                   :items="methodToAddSrNoInInWorkTable"
                   :items-per-page="-1"
-                  item-key="BOMComponentName"
+                  item-key="sno"
                   :search="search"
                   fixed-header
                   height="600px"
@@ -1037,7 +1037,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
                   :headers="headersForSeperateTab"
                   :items="methodToAddSrNoInCompleteTable"
                   :items-per-page="-1"
-                  item-key="BOMComponentName"
+                  item-key="sno"
                   :search="search"
                   fixed-header
                   height="600px"
@@ -1402,7 +1402,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
                   :headers="headersForSeperateTab"
                   :items="methodToAddSrNoInFailedTable"
                   :items-per-page="-1"
-                  item-key="BOMComponentName"
+                  item-key="sno"
                   :search="search"
                   fixed-header
                   height="600px"
@@ -1767,7 +1767,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
               :headers="headersForAllInOneTab"
               :items="methodToAddSrNoInAllTab"
               :items-per-page="-1"
-              item-key="BOMComponentName"
+              item-key="sno"
               :search="search"
               fixed-header
               height= "600px"
