@@ -193,6 +193,12 @@ h1{
 table > thead > tr > th:hover {
   color: #78befa !important;
 }
+.theme--light.v-data-table .v-data-table-header th.sortable .v-data-table-header__icon {
+  color: rgb(255 255 255);
+}
+.v-tab:hover {
+  color: rgb(255 255 255);
+}
 /* .v-snack--top{
   top:5%;
 } */
