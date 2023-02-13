@@ -5,7 +5,6 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
   "LCD/LCD_3DX_SAP_Integration/lib/scripts/vuetify.min",
   "i18n!LCD/LCD_3DX_SAP_Integration/nls/3DX_SAP_Integration_nls",
   "css!LCD/LCD_3DX_SAP_Integration/lib/styles/vuetify.min.css",
-  "css!LCD/LCDLIB/styles/google.css",
   "css!LCD/LCDLIB/styles/materialdesignicons.min.css",
   "css!LCD/LCD_3DX_SAP_Integration/assets/styles/style.css",
 ], function (Vue, PlatformAPI, WAFData, Vuetify, PLM_SAP_Integration_nls) {
@@ -132,7 +131,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
               method: "POST",
               accept: "application/json",
               crossOrigin: true,
-              timeout: 7000,
+              timeout: 300000,
               data: JSON.stringify(data_to_be_Send_from_UI),
               headers: {
                 "Content-Type": "application/json",
@@ -140,8 +139,10 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
               onComplete: function (myJson) {
                 myWidget.jsonResponse = JSON.parse(myJson);
                 resolve();
+                _this.vueapp.loadingStatusForRepush = false;
               },
               onFailure: function (error) {
+                _this.vueapp.loadingStatusForRepush = false;
                 console.log( "--------> ERROR ON WEBSERVICE FAILURE " +error);
                 _this.vueapp.snackbarColor = "error";
                 _this.vueapp.snackbarIcon = "mdi-close-circle";
@@ -184,7 +185,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
           method: "POST",
           accept: "application/json",
           crossOrigin: true,
-          timeout: 120000,
+          timeout: 300000,
           data: JSON.stringify(dataTobeSendfromUI),
           headers: {
             "Content-Type": "application/json",
@@ -193,7 +194,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
             _this.vueapp.download_csv_of_tabledata(
               dataResp,BOM_Comp_Name
             );
-            _this.vueapp.loadingStatus = false;
+            _this.vueapp.loadingStatusForExportPartData = false;
           },
           onFailure: function (error) {
             console.log(error);
@@ -201,6 +202,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
             _this.vueapp.snackbarIcon = "mdi-close-circle";
             _this.vueapp.snackbarmsgforFailedReport ="Something went wrong.";
             _this.vueapp.snackbarExport = true;
+            _this.vueapp.loadingStatusForExportPartData = false;
           },
         }
       );
@@ -295,7 +297,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
                     :disabled="!(selected.length == 1)"
                     >Export part data to CSV
                   </v-btn>
-                  <v-progress-circular v-if="loadingStatus" :value="20" color="#78befa" indeterminate style="margin-top: 10px;"></v-progress-circular>
+                  <v-progress-circular v-if="loadingStatusForExportPartData" :value="20" color="#78befa" indeterminate style="margin-top: 10px;"></v-progress-circular>
                 <v-spacer></v-spacer>
                 <v-text-field
                 class="globalsearch"
@@ -650,7 +652,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
                     :disabled="!(selected.length == 1)"
                     >Export part data to CSV
                   </v-btn>
-                  <v-progress-circular v-if="loadingStatus" :value="20" color="#78befa" indeterminate style="margin-top: 10px;"></v-progress-circular>
+                  <v-progress-circular v-if="loadingStatusForExportPartData" :value="20" color="#78befa" indeterminate style="margin-top: 10px;"></v-progress-circular>
                 <v-spacer></v-spacer>
                 <v-text-field
                 class="globalsearch"
@@ -1006,7 +1008,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
                     :disabled="!(selected.length == 1)"
                     >Export part data to CSV
                   </v-btn>
-                  <v-progress-circular v-if="loadingStatus" :value="20" color="#78befa" indeterminate style="margin-top: 10px;"></v-progress-circular>
+                  <v-progress-circular v-if="loadingStatusForExportPartData" :value="20" color="#78befa" indeterminate style="margin-top: 10px;"></v-progress-circular>
                 <v-spacer></v-spacer>
                 <v-text-field
                 class="globalsearch"
@@ -1355,6 +1357,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
                     :disabled="!failedStatus">
                     Re push to SAP
                     </v-btn>
+                    <v-progress-circular v-if="loadingStatusForRepush" :value="20" color="#78befa" indeterminate style="margin-top: 10px; margin-right: 10px;"></v-progress-circular>
                 <v-btn
                 depressed
                 class="buttons"
@@ -1368,7 +1371,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
                 :disabled="!(selected.length == 1)"
                 >Export part data to CSV
               </v-btn>
-              <v-progress-circular v-if="loadingStatus" :value="20" color="#78befa" indeterminate style="margin-top: 10px;"></v-progress-circular>
+              <v-progress-circular v-if="loadingStatusForExportPartData" :value="20" color="#78befa" indeterminate style="margin-top: 10px;"></v-progress-circular>
                 <v-spacer></v-spacer>
                 <v-text-field
                 class="globalsearch"
@@ -1720,6 +1723,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
                     :disabled="!failedStatus">
                     Re-push to SAP
                     </v-btn>
+                    <v-progress-circular v-if="loadingStatusForRepush" :value="20" color="#78befa" indeterminate style="margin-top: 10px; margin-right: 10px;"></v-progress-circular>
                     <v-btn
                       depressed
                       class="buttons"
@@ -1733,7 +1737,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
                       :disabled="!(selected.length == 1)"
                       >Export part data to CSV
                     </v-btn>
-                    <v-progress-circular v-if="loadingStatus" :value="20" color="#78befa" indeterminate style="margin-top: 10px;"></v-progress-circular>
+                    <v-progress-circular v-if="loadingStatusForExportPartData" :value="20" color="#78befa" indeterminate style="margin-top: 10px;"></v-progress-circular>
                 <v-spacer></v-spacer>
                 <v-text-field
                 class="globalsearch"
@@ -2076,7 +2080,8 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
     </v-app>
     </div>`,
         data: {
-          loadingStatus: false,
+          loadingStatusForExportPartData: false,
+          loadingStatusForRepush: false,
           snackbarColor: "success",
           snackbarMsg: [],
           snackbarmsgforFailedReport:"",
@@ -2349,7 +2354,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
               })
           },
           export_part_data() {
-            this.loadingStatus = true;
+            this.loadingStatusForExportPartData = true;
             myWidget.webserviceToExportPartData();
           },
           getStatusColor(status) {
@@ -2411,6 +2416,7 @@ define("LCD/LCD_3DX_SAP_Integration/assets/scripts/main", [
             );
           },
           rePushToSAPMethod() {
+            this.loadingStatusForRepush = true;
             this.snackbarMsg = [];
             this.SearchMethod.map((x) => {
               this.selected.map((y) => {
