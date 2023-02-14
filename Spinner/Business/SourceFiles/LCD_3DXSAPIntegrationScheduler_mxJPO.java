@@ -338,12 +338,12 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 
 						JsonObjectBuilder jEachPayloadBuilder = Json.createObjectBuilder();
 
-						if (changeActionMap.containsKey(caId)) {
-							jEachPayloadBuilder = changeActionMap.get(caId);
-						} else {
+//						if (changeActionMap.containsKey(caId)) {
+//							jEachPayloadBuilder = changeActionMap.get(caId);
+//						} else {
 							jEachPayloadBuilder = ChangeActionJSONPayload(context, caId, strConnectionId, lcdSAPInteg3DExpConstants);
-							changeActionMap.put(caId, jEachPayloadBuilder);
-						}
+//							changeActionMap.put(caId, jEachPayloadBuilder);
+//						}
 
 						if (null != jEachPayloadBuilder) {
 
