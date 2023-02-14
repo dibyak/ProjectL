@@ -17,7 +17,6 @@ import com.matrixone.apps.framework.ui.UIUtil;
 
 import matrix.db.BusinessObject;
 import matrix.db.Context;
-import matrix.util.MatrixException;
 import matrix.util.StringList;
 
 public class LCDSAPIntegrationAnchorObject {
@@ -26,9 +25,9 @@ public class LCDSAPIntegrationAnchorObject {
 	/**
 	 * @param context
 	 * @return
-	 * @throws MatrixException
+	 * @throws Exception 
 	 */
-	public static String getConnectedAssemblyDetailsAsJsonString (Context context) throws MatrixException {
+	public static String getConnectedAssemblyDetailsAsJsonString (Context context) throws Exception {
 		LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants = new LCDSAPIntegration3DExpConstants(context);
 		BusinessObject busObjAchor = new BusinessObject(lcdSAPInteg3DExpConstants.TYPE_LCD_BOM_ANCHOR_OBJECT, lcdSAPInteg3DExpConstants.NAME_LCD_BOM_ANCHOR_OBJECT,
 				lcdSAPInteg3DExpConstants.REVISION_LCD_BOM_ANCHOR_OBJECT, lcdSAPInteg3DExpConstants.VAULT_ESERVICE_PRODUCTION);
@@ -36,11 +35,13 @@ public class LCDSAPIntegrationAnchorObject {
 		StringList slObjectSelect = new StringList();
 		slObjectSelect.add(DomainConstants.SELECT_ID);
 		slObjectSelect.add(DomainConstants.SELECT_NAME);
+		slObjectSelect.add(DomainConstants.SELECT_TYPE);
 		slObjectSelect.add(DomainConstants.SELECT_REVISION);
 		slObjectSelect.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PLMENTITY_V_NAME);
 		slObjectSelect.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PLMENTITY_V_DESCRIPTION);
 		slObjectSelect.add(DomainConstants.SELECT_CURRENT);
 		slObjectSelect.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_LCD_MF_SAPMBOMUpdatedOn);
+		slObjectSelect.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_LCD_VPMREFERENCE_SAP_MBOM_UPDATED_ON);
 		StringList slRelSelect = new StringList();
 		slRelSelect.add(DomainRelationship.SELECT_ID);
 		MapList mlAssmblyConnectedToAnchorObject = 
@@ -69,7 +70,7 @@ public class LCDSAPIntegrationAnchorObject {
 	 */
 	private String createAssmblyDataJsonString(Context context, MapList mlAssmblyConnectedToAnchorObject, LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants)
 			throws FrameworkException {
-		Map<?,?> changeActionAttrDetailsMap= new HashMap<>();
+//		Map<?,?> changeActionAttrDetailsMap= new HashMap<>();
 		Iterator<?> iterMLAssmblyConnectedToAnchorObject = mlAssmblyConnectedToAnchorObject.iterator();
 		JsonArrayBuilder jabMAs = Json.createArrayBuilder();
 		StringList slCAobjectSelects = new StringList();
@@ -81,8 +82,14 @@ public class LCDSAPIntegrationAnchorObject {
 			String strLCDSAPInterfaceConnId = (String) tempAssmblyDataMap.get(DomainRelationship.SELECT_ID);
 			Map<?,?> tempLCDSAPInterfaceConnDataMap = DomainRelationship.newInstance(context, strLCDSAPInterfaceConnId).getAttributeMap(context);
 			String strCAID = (String) tempLCDSAPInterfaceConnDataMap.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_CAID);
+			String strBomType = (String) tempAssmblyDataMap.get(DomainConstants.SELECT_TYPE);
 			if(UIUtil.isNotNullAndNotEmpty(strCAID)) {
-			changeActionAttrDetailsMap = getChangeActionDetails(context, strCAID, slCAobjectSelects);
+			Map<?, ?> changeActionAttrDetailsMap = getChangeActionDetails(context, strCAID, slCAobjectSelects);
+			jobMA.add(LCDSAPIntegrationDataConstants.CA_COMPLETED_TIME, (String) changeActionAttrDetailsMap.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_ACTUAL_COMPLETION_DATE));
+			jobMA.add(LCDSAPIntegrationDataConstants.CA_NAME, (String) changeActionAttrDetailsMap.get(DomainConstants.SELECT_NAME));
+			} else {
+				jobMA.add(LCDSAPIntegrationDataConstants.CA_COMPLETED_TIME, "");
+				jobMA.add(LCDSAPIntegrationDataConstants.CA_NAME, "");
 			}
 			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_CONNECTION_ID, strLCDSAPInterfaceConnId);
 			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_ID, strCAID);
@@ -93,10 +100,15 @@ public class LCDSAPIntegrationAnchorObject {
 			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_TITLE, (String) tempAssmblyDataMap.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PLMENTITY_V_NAME));
 			jobMA.add(LCDSAPIntegrationDataConstants.PROPERTY_MATURITY, (String) tempAssmblyDataMap.get(DomainConstants.SELECT_CURRENT));
 			jobMA.add(LCDSAPIntegrationDataConstants.DESCRIPTION, (String) tempAssmblyDataMap.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PLMENTITY_V_DESCRIPTION));
-			jobMA.add(LCDSAPIntegrationDataConstants.CA_COMPLETED_TIME, (String) changeActionAttrDetailsMap.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_ACTUAL_COMPLETION_DATE));
-			jobMA.add(LCDSAPIntegrationDataConstants.CA_NAME, (String) changeActionAttrDetailsMap.get(DomainConstants.SELECT_NAME));
-			jobMA.add(LCDSAPIntegrationDataConstants.SAP_FEEDBACK_TIMESTAMP, (String) tempAssmblyDataMap.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_LCD_MF_SAPMBOMUpdatedOn));
-			jobMA.add(LCDSAPIntegrationDataConstants.SAP_FEEDBACK_MESSAGE, (String)tempLCDSAPInterfaceConnDataMap.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE));
+			
+
+			if(strBomType.equalsIgnoreCase(lcdSAPInteg3DExpConstants.TYPE_MANUFACTURING_ASSEMBLY)) {
+				jobMA.add(LCDSAPIntegrationDataConstants.SAP_FEEDBACK_TIMESTAMP, (String) tempAssmblyDataMap.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_LCD_MF_SAPMBOMUpdatedOn));
+			} else {
+				jobMA.add(LCDSAPIntegrationDataConstants.SAP_FEEDBACK_TIMESTAMP, (String) tempAssmblyDataMap.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_LCD_VPMREFERENCE_SAP_MBOM_UPDATED_ON));
+			}
+			
+			jobMA.add(LCDSAPIntegrationDataConstants.SAP_FEEDBACK_MESSAGE, (String) tempLCDSAPInterfaceConnDataMap.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_SAP_FEEDBACK_MESSAGE));
 			jabMAs.add(jobMA);
 		}
 		return jabMAs.build().toString();

@@ -76,12 +76,12 @@ public class LCDSAPIntegrationExportCSVServices extends RestService {
 
 			if (lcdSAPInteg3DExpConstants.TYPE_MANUFACTURING_ASSEMBLY.equalsIgnoreCase(strBomType)) {
 				jsonObject = LCDSAPIntegrationGenrateJsonPayload.getManAssemblyJSON(context, strBomId, strBomType,
-						strcaId);
+						strcaId, strConnectionId, true);
 			} else {
 				Map<?, ?> mCadPartDetails = LCDSAPIntegrationGenrateJsonPayload.getCADPartDetails(context, strBomId,
 						lcdSAPInteg3DExpConstants);
 				jsonObject = LCDSAPIntegrationGenrateJsonPayload.getPhysicalProductJSON(context, mCadPartDetails,
-						strConnectionId, lcdSAPInteg3DExpConstants);
+						strConnectionId, lcdSAPInteg3DExpConstants, true);
 			}
 
 			if (jsonObject != null) {

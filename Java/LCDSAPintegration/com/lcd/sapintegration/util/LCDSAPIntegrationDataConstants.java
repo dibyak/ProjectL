@@ -68,7 +68,9 @@ public class LCDSAPIntegrationDataConstants {
 	public static final String VALUE_FALSE = "FALSE";
 	public static final String MSG_NETWORK_FAILURE = "Network Failure";
 	public static final String MSG_MBOM_CREATED_SUCCESSFULLY = "MBOM Created Successfully";
-	public static final String MSG_EBOM_CREATED_SUCCESSFULLY = "EBOM Creation Successful";
+	public static final String MSG_MBOM_CREATION_FAILED = "MBOM Creation Failed";
+	public static final String MSG_EBOM_CREATED_SUCCESSFULLY = "EBOM Created Successfully";
+	public static final String MSG_EBOM_CREATION_FAILED = "EBOM Creation Failed";
 	public static final String HEADER_LEVEL = "Level";
 	public static final String COMMA_SEP = ",";	
 	public static final String CA_DETAILS = "Change Action Details";
@@ -81,6 +83,12 @@ public class LCDSAPIntegrationDataConstants {
 	public static final String PROPERTY_INSTANCE_UNIQUE_ID = "Instance_Unique_ID";
 	public static final String PROPERTY_SAP_FEEDBACK_TIMESTAMP = "SAP_Feedback_TimeStamp";
 	public static final String LCD_3DX_SAP_INTEGRATION_KEY = "LCD_3DXSAPStringResource_en";
+	public static final String KEY_CA = "changeaction";
+	public static final String KEY_REALIZED = "realized";
+	public static final String KEY_CA_WHERE = "where";
+	public static final String KEY_CA_INFO = "info";
+	public static final String KEY_CA_ID = "id";
+	public static final String KEY_CA_TYPE = "type";
 	
 	private LCDSAPIntegrationDataConstants() {
 		
