@@ -199,6 +199,9 @@ table > thead > tr > th:hover {
 .v-tab:hover {
   color: rgb(255 255 255);
 }
+.theme--light.v-data-table .v-data-table-header th.sortable.active, .theme--light.v-data-table .v-data-table-header th.sortable.active .v-data-table-header__icon, .theme--light.v-data-table .v-data-table-header th.sortable:hover {
+    color: #f9f9f9;
+}
 /* .v-snack--top{
   top:5%;
 } */
