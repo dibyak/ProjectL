@@ -126,9 +126,10 @@ public class LCDSAPIntegrationCallSAPServices {
 	 */
 	public static int callPostService(Context context, JsonObject jEachPayloadObj,
 			LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants) throws Exception {
-		loggerDebug.info("callPostService()..... START");
+		System.out.println("callPostService()..... START");
 		int intResponseCode = 0;
 		try {
+			language = context.getSession().getLanguage();
 			// STEP : Creating HttpPost Object with SAP webService URL
 			url = EnoviaResourceBundle.getProperty(context, lcdSAPInteg3DExpConstants.LCD_3DX_SAP_INTEGRATION_KEY,
 					"LCD_3DXSAPStringResource_en.SAP.WebServiceURL.DEV", language);
@@ -179,7 +180,7 @@ public class LCDSAPIntegrationCallSAPServices {
 			loggerDebug.info("postURL -- " + postURL);
 			intResponseCode = response.getStatusLine().getStatusCode();
 
-			if (intResponseCode == HttpStatus.SC_OK) { // success
+			if (intResponseCode == 200 || intResponseCode == 201 || intResponseCode == 202) { // success
 				// STEP : Collecting the acknowledgement from SAP webService
 				loggerDebug.info(
 						"POST request successful , response code ==  " + response.getStatusLine().getStatusCode());
@@ -191,7 +192,7 @@ public class LCDSAPIntegrationCallSAPServices {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		loggerDebug.info("callPostService()..... END");
+		System.out.println("callPostService()..... END");
 		return intResponseCode;
 	}
 }

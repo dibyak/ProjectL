@@ -11,6 +11,8 @@ import com.dassault_systemes.enovia.changeaction.impl.ChangeAction;
 import com.dassault_systemes.enovia.changeaction.servicesimpl.ChangeActionServices;
 import com.dassault_systemes.enovia.changeaction.webservice.services.ChangeActionJsonUtilities;
 import com.dassault_systemes.enovia.changeaction.webservice.services.ChangeActionJsonUtilities.ChangeActionFacets;
+import com.lcd.sapintegration.util.LCDSAPIntegration3DExpConstants;
+import com.lcd.sapintegration.util.LCDSAPIntegrationDataConstants;
 import com.matrixone.apps.domain.DomainConstants;
 import com.matrixone.apps.domain.DomainObject;
 import com.matrixone.apps.domain.DomainRelationship;
@@ -29,39 +31,7 @@ import matrix.util.StringList;
  * @author
  *
  */
-public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
-	private static final String ATTR_PROCUREMENT_INTENT_MFG_ASMBLY = "attribute[LCDMF_ManufacturingAssembly.LCDMF_ProcurementIntent]";
-	private static final String ATTR_PROCUREMENT_INTENT_VPMREFERENCE = "attribute[XP_VPMReference_Ext.AtievaProcurementIntent]";
-	private static final String ATTR_HAS_CONFIG_CONTEXT_VPMREFERENCE = "attribute[PLMReference.V_hasConfigContext]";
-	private static final String ATTR_LCD_PROCESS_STATUS_FLAG = "LCD_ProcessStatusFlag";
-	private static final String ATTR_LCD_CAID = "LCD_CAID";
-
-	private static final String TYPE_MANUFACTURINGASSEMBLY = "CreateAssembly";
-	private static final String TYPE_VPMREFERENCE = "VPMReference";
-	private static final String TYPE_ELECTRICALBRANCHGEOMETRY = "ElectricalBranchGeometry";
-	private static final String TYPE_ELECTRICALGEOMETRY = "ElectricalGeometry";
-	private static final String TYPE_PIPING_RIGID_PIPE = "Piping_Rigid_Pipe";
-	private static final String TYPE_SPOTFASTENERSINGLE = "SpotFastenerSingle";
-
-	private static final String DESCRETE = "Make";
-	private static final String SUBCONTRACT = "Sub-Contract";
-	private static final String FALSE = "FALSE";
-	private static final String VALUE_STATUS_WAITING = "Waiting";
-
-	private static final String TYPE_LCD_BOM_ANCHOR_OBJECT = "LCD_BOMAnchorObject";
-	private static final String NAME_LCD_ANCHOR_OBJECT = "LCD_AnchorObject";
-	private static final String REV_LCD_ANCHOR_OBJECT = "A";
-	private static final String VAULT_ESERVICE_PRODUCTION = "eService Production";
-	private static final String REL_LCD_SAP_BOM_INTERFACE = "LCD_SAPBOMInterface";
-
-	private static final String KEY_CA = "changeaction";
-	private static final String KEY_REALIZED = "realized";
-	private static final String KEY_CA_WHERE = "where";
-	private static final String KEY_CA_INFO = "info";
-	private static final String KEY_CA_ID = "id";
-	private static final String KEY_CA_TYPE = "type";
-	private static final String POLICY_VPLM_SMB_DEFINITION_STATE_RELEASED = "RELEASED";
-	
+public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {	
 
 	/**
 	 * Method to connect Parts to Anchor object. Invoked from CA-Promote Action
@@ -72,8 +42,13 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 	 * @throws Exception when operation fails
 	 */
 	public void connectManAssemblyToAnchorObject(Context context, String[] args) throws Exception {
-
+		
+		LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants = new LCDSAPIntegration3DExpConstants(context);
+		boolean bIsContextPushed = false;
 		try {
+			
+		ContextUtil.pushContext(context);
+		bIsContextPushed = true;
 		String strCAId = args[0];
 		
 		for(int i =0;i< args.length ; i++) {
@@ -81,10 +56,10 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 		}
 
 
-		BusinessObject busObjAchor = new BusinessObject(TYPE_LCD_BOM_ANCHOR_OBJECT, // String Type
-				NAME_LCD_ANCHOR_OBJECT, // String Name
-				REV_LCD_ANCHOR_OBJECT, // String Revision
-				VAULT_ESERVICE_PRODUCTION); // String Vault
+		BusinessObject busObjAchor = new BusinessObject(lcdSAPInteg3DExpConstants.TYPE_LCD_BOM_ANCHOR_OBJECT, // String Type
+				lcdSAPInteg3DExpConstants.NAME_LCD_BOM_ANCHOR_OBJECT, // String Name
+				lcdSAPInteg3DExpConstants.REVISION_LCD_BOM_ANCHOR_OBJECT, // String Revision
+				lcdSAPInteg3DExpConstants.VAULT_ESERVICE_PRODUCTION); // String Vault
 		
 		if(busObjAchor.exists(context)) {
 
@@ -101,15 +76,15 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 
 			JsonReader jsonReadCADetails = Json.createReader(new StringReader(strCAJsonDetails));
 			JsonObject jsonObjChangeAction = jsonReadCADetails.readObject();
-			JsonArray jsonArrRealizedItems = jsonObjChangeAction.getJsonObject(KEY_CA).getJsonArray(KEY_REALIZED);
+			JsonArray jsonArrRealizedItems = jsonObjChangeAction.getJsonObject(LCDSAPIntegrationDataConstants.KEY_CA).getJsonArray(LCDSAPIntegrationDataConstants.KEY_REALIZED);
 			jsonReadCADetails.close();
 
 			if (jsonArrRealizedItems != null) {
 				for (int i = 0; i < jsonArrRealizedItems.size(); i++) {
 					JsonObject jsonObjRealizedItem = jsonArrRealizedItems.getJsonObject(i);
-					String strRealizedItemType = jsonObjRealizedItem.getJsonObject(KEY_CA_WHERE)
-							.getJsonObject(KEY_CA_INFO).getString(KEY_CA_TYPE);
-					String realizedItemId = jsonObjRealizedItem.getJsonObject(KEY_CA_WHERE).get(KEY_CA_ID).toString()
+					String strRealizedItemType = jsonObjRealizedItem.getJsonObject(LCDSAPIntegrationDataConstants.KEY_CA_WHERE)
+							.getJsonObject(LCDSAPIntegrationDataConstants.KEY_CA_INFO).getString(LCDSAPIntegrationDataConstants.KEY_CA_TYPE);
+					String realizedItemId = jsonObjRealizedItem.getJsonObject(LCDSAPIntegrationDataConstants.KEY_CA_WHERE).get(LCDSAPIntegrationDataConstants.KEY_CA_ID).toString()
 							.split(":")[1].replace("\"", "");
 					if(UIUtil.isNotNullAndNotEmpty(realizedItemId)) {
 						DomainObject domObjRealizedItem = DomainObject.newInstance(context, realizedItemId);
@@ -119,10 +94,10 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 						Map<?, ?> realizedItemMap = domObjRealizedItem.getInfo(context, slObjectSelects);
 						String strRealizedID = (String) realizedItemMap.get(DomainConstants.SELECT_ID);
 
-						if (TYPE_MANUFACTURINGASSEMBLY.equalsIgnoreCase(strRealizedItemType)) {
-							DomainRelationship relEbom = domObjAnchor.addRelatedObject(context,new RelationshipType(REL_LCD_SAP_BOM_INTERFACE), false, strRealizedID);
-							relEbom.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, VALUE_STATUS_WAITING);
-							relEbom.setAttributeValue(context, ATTR_LCD_CAID, strCAId);
+						if (lcdSAPInteg3DExpConstants.TYPE_MANUFACTURING_ASSEMBLY.equalsIgnoreCase(strRealizedItemType)) {
+							DomainRelationship relEbom = domObjAnchor.addRelatedObject(context,new RelationshipType(lcdSAPInteg3DExpConstants.RELATIONSHIP_LCD_SAP_BOM_INTERFACE), false, strRealizedID);
+							relEbom.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG, LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_Waiting);
+							relEbom.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_CAID, strCAId);
 						}
 					}
 				}
@@ -131,6 +106,10 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw e;
+		} finally {
+			if(bIsContextPushed) {
+				ContextUtil.popContext(context);
+			}
 		}
 		}
 
@@ -144,20 +123,25 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 	 */
 	public void connectPhysicalProductToAnchorObject(Context context, String[] args) throws Exception {
 		System.out.println("connectPhysicalProductToAnchorObject-----START");
+		LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants = new LCDSAPIntegration3DExpConstants(context);
+		boolean bIsContextPushed = false;
 		try {
+		ContextUtil.pushContext(context);
+		bIsContextPushed = true;
+		
 		for(int i =0;i< args.length ; i++) {
 			System.out.println("connectPhysicalProductToAnchorObject---ARG "+i+" - "+args[i]);
 		}
 		String strObjectId = args[0];
 		String strNextState = args[1];
 
-		if(POLICY_VPLM_SMB_DEFINITION_STATE_RELEASED.equalsIgnoreCase(strNextState)) {
+		if(LCDSAPIntegrationDataConstants.VALUE_RELEASED.equalsIgnoreCase(strNextState)) {
 			DomainObject domObjCadPart = DomainObject.newInstance(context, strObjectId);
 
-			BusinessObject busObjAchor = new BusinessObject(TYPE_LCD_BOM_ANCHOR_OBJECT, // String Type
-					NAME_LCD_ANCHOR_OBJECT, // String Name
-					REV_LCD_ANCHOR_OBJECT, // String Revision
-					VAULT_ESERVICE_PRODUCTION); // String Vault
+			BusinessObject busObjAchor = new BusinessObject(lcdSAPInteg3DExpConstants.TYPE_LCD_BOM_ANCHOR_OBJECT, // String Type
+					lcdSAPInteg3DExpConstants.NAME_LCD_BOM_ANCHOR_OBJECT, // String Name
+					lcdSAPInteg3DExpConstants.REVISION_LCD_BOM_ANCHOR_OBJECT, // String Revision
+					lcdSAPInteg3DExpConstants.VAULT_ESERVICE_PRODUCTION); // String Vault
 			
 			if(busObjAchor.exists(context)) {
 
@@ -166,24 +150,22 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 			StringList slObjectSelects = new StringList();
 			slObjectSelects.add(DomainConstants.SELECT_ID);
 			slObjectSelects.add(DomainConstants.SELECT_TYPE);
-			slObjectSelects.add(ATTR_PROCUREMENT_INTENT_VPMREFERENCE);
+			slObjectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PROCUREMENTINTENT_VPMREFERENCE);
 
 			Map<?, ?> realizedItemMap = domObjCadPart.getInfo(context, slObjectSelects);
 			String strCadPartId = (String) realizedItemMap.get(DomainConstants.SELECT_ID);
 			String strCadPartType = (String) realizedItemMap.get(DomainConstants.SELECT_TYPE);
-			String strObjProcIntent = (String) realizedItemMap.get(ATTR_PROCUREMENT_INTENT_VPMREFERENCE);
+			String strObjProcIntent = (String) realizedItemMap.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PROCUREMENTINTENT_VPMREFERENCE);
 
-			if (SUBCONTRACT.equalsIgnoreCase(strObjProcIntent) && (TYPE_VPMREFERENCE.equalsIgnoreCase(strCadPartType)
-					|| TYPE_ELECTRICALBRANCHGEOMETRY.equalsIgnoreCase(strCadPartType)
-					|| TYPE_ELECTRICALGEOMETRY.equalsIgnoreCase(strCadPartType)
-					|| TYPE_PIPING_RIGID_PIPE.equalsIgnoreCase(strCadPartType)
-					|| TYPE_SPOTFASTENERSINGLE.equalsIgnoreCase(strCadPartType))) {
+			if (LCDSAPIntegrationDataConstants.SUBCONTRACT.equalsIgnoreCase(strObjProcIntent) && (lcdSAPInteg3DExpConstants.TYPE_VPM_REFERENCE.equalsIgnoreCase(strCadPartType)
+					|| lcdSAPInteg3DExpConstants.TYPE_ELECTRICALBRANCHGEOMETRY.equalsIgnoreCase(strCadPartType)
+					|| lcdSAPInteg3DExpConstants.TYPE_ELECTRICALGEOMETRY.equalsIgnoreCase(strCadPartType)
+					|| lcdSAPInteg3DExpConstants.TYPE_PIPING_RIGID_PIPE.equalsIgnoreCase(strCadPartType)
+					|| lcdSAPInteg3DExpConstants.TYPE_SPOTFASTENERSINGLE.equalsIgnoreCase(strCadPartType))) {
 
 				DomainRelationship relObjAnchor = domObjAnchor.addRelatedObject(context,
-						new RelationshipType(REL_LCD_SAP_BOM_INTERFACE), false, strCadPartId);
-			    ContextUtil.pushContext(context);
-				relObjAnchor.setAttributeValue(context, ATTR_LCD_PROCESS_STATUS_FLAG, VALUE_STATUS_WAITING);
-				ContextUtil.popContext(context);
+						new RelationshipType(lcdSAPInteg3DExpConstants.RELATIONSHIP_LCD_SAP_BOM_INTERFACE), false, strCadPartId);
+				relObjAnchor.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG, LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_Waiting);
 			}
 		}
 			
@@ -191,6 +173,10 @@ public class LCD_ConnectBomComponentsWithAnchorObject_mxJPO {
 	}catch (Exception e) {
 		e.printStackTrace();
 		throw e;
+	}finally {
+		if(bIsContextPushed) {
+			ContextUtil.popContext(context);
+		}
 	}
 		}
 	

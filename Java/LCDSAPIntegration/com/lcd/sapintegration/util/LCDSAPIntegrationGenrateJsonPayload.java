@@ -46,11 +46,12 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 	public static boolean CONFIGURABLE_STATUS;
 	public static String CA_START_DATE;
 	public static List<String> LIST_REALIZED_CHANGES;
+	private static String partReleasedDate;
 
 	private static HashMap<String, JsonObjectBuilder> changeActionMap = new HashMap<>();
 
 	public static JsonObject getManAssemblyJSON(matrix.db.Context context, String strBOMComponentId,
-			String strBOMComponentType, String caId, String connectionId) throws Exception {
+			String strBOMComponentType, String caId, String connectionId, boolean bExportCSV) throws Exception {
 
 		JsonObject jEachPayloadObj = null;
 		LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants = new LCDSAPIntegration3DExpConstants(context);
@@ -85,7 +86,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 						if (changeActionMap.containsKey(caId)) {
 							jEachPayloadBuilder = changeActionMap.get(caId);
 						} else {
-							jEachPayloadBuilder = ChangeActionJSONPayload(context, caId, connectionId,lcdSAPInteg3DExpConstants);
+							jEachPayloadBuilder = ChangeActionJSONPayload(context, caId, connectionId,lcdSAPInteg3DExpConstants, bExportCSV);
 							changeActionMap.put(caId, jEachPayloadBuilder);
 						}
 
@@ -144,7 +145,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 
 									// STEP : Adding Manufacturing Assembly Header in JSON
 									jHeaderPartObjectBuilder = addRealizedItemHeader(context, mobjectDetails,
-											lcdSAPInteg3DExpConstants);
+											lcdSAPInteg3DExpConstants, bExportCSV);
 									if (null != jHeaderPartObjectBuilder) {
 										jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_HEADER_PART,
 												jHeaderPartObjectBuilder.build());
@@ -175,7 +176,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 	 * @throws Exception
 	 */
 	private static JsonObjectBuilder ChangeActionJSONPayload(matrix.db.Context context, String caId, String strConnectionId,
-			LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants) throws Exception {
+			LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants,boolean bExportCSV) throws Exception {
 
 		// STEP : Creating JSON object Builder to add the change action object details
 		JsonObjectBuilder jEachPayloadBuilder = Json.createObjectBuilder();
@@ -209,12 +210,16 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 
 				jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_PLATFORM,
 						LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
+				
+				if(bExportCSV) {
+					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_START_DATE,
+							LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 
-				jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_START_DATE,
-						LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
+					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_END_DATE,
+							LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
+				}
 
-				jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_END_DATE,
-						LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
+				
 			} else {
 
 				// STEP : Retrieving Change Action Details from Input Change Action JSON
@@ -260,6 +265,18 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 							else
 								mcaDetails.put(attrName, " ");
 						}
+					}
+				}
+				
+				String strCACompletionDate = mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_CHANGE_ACTION_RELEASED_DATE);
+				if (UIUtil.isNotNullAndNotEmpty(strCACompletionDate)) {
+					strCACompletionDate = strCACompletionDate.substring(0, strCACompletionDate.length() - 11);
+					if (UIUtil.isNotNullAndNotEmpty(strCACompletionDate)) {
+						SimpleDateFormat format1 = new SimpleDateFormat("MM/dd/yyyy");
+						SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
+						Date date = format1.parse(strCACompletionDate);
+						String formatDate = format2.format(date);
+						setCACompletionDate(formatDate);
 					}
 				}
 
@@ -317,19 +334,22 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_PLATFORM,
 							mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_CHANGE_ACTION_PLATFORM));
 
-				if (UIUtil.isNotNullAndNotEmpty(
-						mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_START_DATE)))
-					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_START_DATE,
-							mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_START_DATE));
-				else
-					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_START_DATE, "");
+				if(bExportCSV) {
+					if (UIUtil.isNotNullAndNotEmpty(
+							mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_START_DATE)))
+						jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_START_DATE,
+								mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_START_DATE));
+					else
+						jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_START_DATE, "");
 
-				if (UIUtil.isNotNullAndNotEmpty(
-						mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_END_DATE)))
-					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_END_DATE,
-							mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_END_DATE));
-				else
-					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_END_DATE, "");
+					if (UIUtil.isNotNullAndNotEmpty(
+							mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_END_DATE)))
+						jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_END_DATE,
+								mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_END_DATE));
+					else
+						jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_END_DATE, "");
+				}
+				
 
 			}
 		} catch (Exception e) {
@@ -348,7 +368,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 	 * @throws Exception
 	 */
 	private static JsonObjectBuilder addRealizedItemHeader(matrix.db.Context context, Map mobjectDetails,
-			LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants) throws Exception {
+			LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants, boolean bExportCSV) throws Exception {
 
 		// STEP : Creating JSON object Builder to add the realized item details
 		JsonObjectBuilder jHeaderPartObjectBuilder = Json.createObjectBuilder();
@@ -398,7 +418,22 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 			else
 				jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DESCRIPTION, " ");
 
-			jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_UNIT_OF_MEASURE, "");
+			if(bExportCSV) {
+				jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_UNIT_OF_MEASURE, "");
+				
+				if (UIUtil.isNotNullAndNotEmpty(strSapBomUpdatedOn))
+					jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_SAP_MBOM_UPDATED_ON,
+							strSapBomUpdatedOn);
+				else
+					jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_SAP_MBOM_UPDATED_ON, "Not Started");
+				
+				
+				if (UIUtil.isNotNullAndNotEmpty(strSapUniqueId))
+					jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_SAPUNIQUE_ID,
+							strSapUniqueId);
+				else
+					jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_SAPUNIQUE_ID, " ");
+			}
 			
 			if (UIUtil.isNotNullAndNotEmpty(strObjProcurementIntent))
 				jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_PROCUREMENTINTENT,
@@ -423,21 +458,6 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 			else
 				jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_PARTINTERCHANGEABILITY, " ");
 			
-			
-			
-			if (UIUtil.isNotNullAndNotEmpty(strSapBomUpdatedOn))
-				jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_SAP_MBOM_UPDATED_ON,
-						strSapBomUpdatedOn);
-			else
-				jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_SAP_MBOM_UPDATED_ON, "Not Started");
-			
-			
-			if (UIUtil.isNotNullAndNotEmpty(strSapUniqueId))
-				jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_SAPUNIQUE_ID,
-						strSapUniqueId);
-			else
-				jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_SAPUNIQUE_ID, " ");
-
 			jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_EFFECTIVITY_OPTION_CODE,
 					LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 			jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM,
@@ -566,7 +586,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 						strPartInterchangeability = (String) mLinkedCadPart
 								.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PARTINTERCHANGEABILITY_VPMREFERENCE);
 						strUnitOfMeasure = (String) mLinkedCadPart
-								.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_UNITOFMEASURE_VPMREFERENCE);
+								.get("attribute[XP_VPMReference_Ext.AtievaUnitofMeasure]");
 					}
 				}
 			}
@@ -802,8 +822,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PARTINTERCHANGEABILITY_VPMREFERENCE); // "Part
 																													// Interchangeability
 																													// ";
-				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_UNITOFMEASURE_VPMREFERENCE); // "Unit of
-																											// Measure";
+				objectSelects.add("attribute[XP_VPMReference_Ext.AtievaUnitofMeasure]"); // "Unit of Measure";
 
 				// RelationShip Selectables
 				StringList relInfoList = new StringList();
@@ -887,6 +906,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 			// STEP : Defining Relationship Selectables
 			StringList relSelects = new StringList();
 			relSelects.add(DomainConstants.SELECT_RELATIONSHIP_ID);
+			relSelects.add(DomainConstants.SELECT_PHYSICAL_ID);
 			relSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_HAS_CONFIG_EFFECTIVITY);
 			DomainObject partDomObj = DomainObject.newInstance(context, strObjectId);
 
@@ -968,6 +988,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 			e.printStackTrace();
 		}
 	}
+	
 
 	/**
 	 * This Method is to create the SubContract Part header in JSON
@@ -979,12 +1000,12 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 	 * @throws Exception
 	 */
 	public static JsonObject getPhysicalProductJSON(matrix.db.Context context, Map<?, ?> mCadPartDetails,
-			String strConnectionId, LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants) throws Exception {
+			String strConnectionId, LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants, boolean bExportCSV) throws Exception {
 		JsonObject jSubContractPayloadObj = null;
 		try {
 			if (mCadPartDetails != null)
 				jSubContractPayloadObj = sendSubContractPartPayload(context, mCadPartDetails, strConnectionId,
-						lcdSAPInteg3DExpConstants);
+						lcdSAPInteg3DExpConstants, bExportCSV);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -1002,14 +1023,14 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 	 */
 
 	private static JsonObject sendSubContractPartPayload(matrix.db.Context context, Map<?, ?> mSubContractPartDetails,
-			String strConnectionId, LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants) throws Exception {
+			String strConnectionId, LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants, boolean bExportCSV) throws Exception {
 		JsonObject jSubContractPayloadObj = null;
 
 		try {
 
 			// STEP : Get Change Action Header
 			JsonObjectBuilder jEachSubContractPayloadBuilder = ChangeActionJSONPayload(context, null, strConnectionId,
-					lcdSAPInteg3DExpConstants);
+					lcdSAPInteg3DExpConstants, bExportCSV);
 			if (null != jEachSubContractPayloadBuilder) {
 				// STEP : Get SubContract part Header
 
@@ -1119,7 +1140,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PARTINTERCHANGEABILITY_VPMREFERENCE); // "Part
 																													// Interchangeability
 																													// ";
-				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_UNITOFMEASURE_VPMREFERENCE); // "Unit of
+				objectSelects.add("attribute[XP_VPMReference_Ext.AtievaUnitofMeasure]"); // "Unit of
 																											// Measure";
 
 				// RelationShip Selectables
@@ -1180,7 +1201,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 			String strdesc = (String) mchildPartDetails
 					.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PLMENTITY_V_DESCRIPTION);
 			String strUnitOfMeasure = (String) mchildPartDetails
-					.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_UNITOFMEASURE_VPMREFERENCE);
+					.get("attribute[XP_VPMReference_Ext.AtievaUnitofMeasure]");
 			String strProcIntent = (String) mchildPartDetails
 					.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PROCUREMENTINTENT_VPMREFERENCE);
 			String strServiceItem = (String) mchildPartDetails
@@ -1190,6 +1211,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 			String strhasConfigEffectivity = (String) mchildPartDetails
 					.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_HAS_CONFIG_EFFECTIVITY);
 
+			/*String strVariantEffectivity = null;
 			String strEffectivityObject = null;
 			String strDateEffectivity = "";
 			String strCADReleaseDateIn = "";
@@ -1224,7 +1246,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 						}
 					}
 				}
-			}
+			}*/
 			// STEP : Adding information of each BuySubC Part IN JSON Object
 
 			if (UIUtil.isNotNullAndNotEmpty(strVName))
@@ -1275,16 +1297,21 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 			jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_EFFECTIVITY_OPTION_CODE,
 					LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 
-			SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd");
-			SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
-			if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateIn)) {
+//			SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd");
+//			SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
+			/*if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateIn)) {
 				Date date = format1.parse(strCADReleaseDateIn);
 				String formatDate = format2.format(date);
 				jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, formatDate);
 			} else
-				jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, " ");
+				jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, " ");*/
+			
+			jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, getPartReleasedDate());
+			
+			String strCADReleaseDateOut = "12-31-9999";
+			jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, strCADReleaseDateOut);
 
-			if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateOut)) {
+			/*if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateOut)) {
 				if (strCADReleaseDateOut.equals("INF")) {
 					strCADReleaseDateOut = "12-31-9999";
 					jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, strCADReleaseDateOut);
@@ -1294,7 +1321,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 					jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, formatDate);
 				}
 			} else
-				jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, " ");
+				jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, " ");*/
 
 			jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_REALIZED_DATA, true);
 
@@ -1333,7 +1360,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PARTINTERCHANGEABILITY_VPMREFERENCE); // "Part
 																													// Interchangeability
 																													// ";
-				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_UNITOFMEASURE_VPMREFERENCE); // "Unit of
+				objectSelects.add("attribute[XP_VPMReference_Ext.AtievaUnitofMeasure]"); // "Unit of
 																											// Measure";
 
 				// RelationShip Selectables
@@ -1478,6 +1505,8 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PARTINTERCHANGEABILITY_VPMREFERENCE); // "Part
 																													// Interchangeability
 																													// ";
+				objectSelects.add("attribute[XP_VPMReference_Ext.AtievaUnitofMeasure]"); // "Unit of Measure";
+				objectSelects.add("attribute[XP_VPMReference_Ext.AtievaActualReleasedDate]"); //Released data of Part
 
 				DomainObject boCADObj = DomainObject.newInstance(context, strOBJId);
 				objInfoMap = boCADObj.getInfo(context, objectSelects);
@@ -1556,6 +1585,17 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 			return lstRealizedChanges;
 
 	}
+	
+	/**
+	 * This Method is to Set the Change Action Completion Date
+	 *
+	 * @param context
+	 * @return CA_RELEASED_DATE : Change Action Completion Date
+	 * @throws Exception
+	 */
+	private static void setCACompletionDate(String strCACompletionDate) {
+		caReleasedDate = strCACompletionDate;
+	}
 
 	/**
 	 * This Method is to Get the Cookie for the Session
@@ -1601,6 +1641,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 	private static JsonObject getChangeActionJson() {
 		return changeActionJson;
 	}
+	
 
 	/**
 	 * This Method is to Get the Change Action Completion Date
@@ -1611,6 +1652,28 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 	 */
 	private static String getCACompletionDate() {
 		return caReleasedDate;
+	}
+	
+	/**
+	 * This Method is to Set the Change Action Completion Date
+	 *
+	 * @param context
+	 * @return CA_RELEASED_DATE : Change Action Completion Date
+	 * @throws Exception
+	 */
+	public static void setPartReleasedDate(String strPartReleasedDate) {
+		partReleasedDate = strPartReleasedDate;
+	}
+
+	/**
+	 * This Method is to Get the Change Action Completion Date
+	 *
+	 * @param context
+	 * @return CA_RELEASED_DATE : Change Action Completion Date
+	 * @throws Exception
+	 */
+	private static String getPartReleasedDate() {
+		return partReleasedDate;
 	}
 
 	/**

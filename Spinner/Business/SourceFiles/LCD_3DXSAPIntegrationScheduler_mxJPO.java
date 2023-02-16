@@ -78,6 +78,8 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 	private static boolean CONFIGURABLE_STATUS;
 	private static String CA_START_DATE;
 	private static List<String> LIST_REALIZED_CHANGES;
+	private static String partReleasedDate;
+	
 
 	private static HashMap<String, JsonObjectBuilder> changeActionMap = new HashMap<>();
 	
@@ -93,18 +95,23 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 	 */
 	public void scheduledPushToSAP(Context context, String[] strArgs) throws Exception {
 		LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants = new LCDSAPIntegration3DExpConstants(context);
+		loggerInitialization(context, lcdSAPInteg3DExpConstants);
 
 		boolean isPresent = checkAncObjPresent(context, lcdSAPInteg3DExpConstants);
 		if (isPresent) {
+			logger.writeLog("Anchor Object already Present");
 			MapList bomComponentsMapList = findRelevantObjectsConnectedToAnchorObject(context, lcdSAPInteg3DExpConstants);
 			bomComponentsMapList.sort("originated", "ascending","date");
-			pushToSAP(context, bomComponentsMapList, lcdSAPInteg3DExpConstants);
+			if(bomComponentsMapList != null && bomComponentsMapList.size() > 0) {
+				pushToSAP(context, bomComponentsMapList, lcdSAPInteg3DExpConstants);
+			}else 
+				logger.writeLog("No BOM component is connected with Anchor Object");
 		} else {
 			DomainObject domObjBomAncOcj = DomainObject.newInstance(context, lcdSAPInteg3DExpConstants.TYPE_LCD_BOM_ANCHOR_OBJECT);
-			loggerDebug.info("Anchor Object created." + domObjBomAncOcj);
+			logger.writeLog("Anchor Object created." + domObjBomAncOcj);
 			domObjBomAncOcj.createObject(context, lcdSAPInteg3DExpConstants.TYPE_LCD_BOM_ANCHOR_OBJECT, lcdSAPInteg3DExpConstants.NAME_LCD_BOM_ANCHOR_OBJECT,
 					lcdSAPInteg3DExpConstants.REVISION_LCD_BOM_ANCHOR_OBJECT, lcdSAPInteg3DExpConstants.POLICY_LCD_3DX_SAP_INTEGRATION, lcdSAPInteg3DExpConstants.VAULT_ESERVICE_PRODUCTION);
-			loggerDebug.info("Anchor Object created -> " + domObjBomAncOcj);
+			logger.writeLog("Anchor Object created -> " + domObjBomAncOcj);
 		}
 	}
 
@@ -143,7 +150,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 		try {
 			JsonObject joBomPayload = null;
 
-			loggerInitialization(context, lcdSAPInteg3DExpConstants);
+			
 			//callGETService(context, lcdSAPInteg3DExpConstants);
 
 			//if (UIUtil.isNotNullAndNotEmpty(xcsrfToken) && UIUtil.isNotNullAndNotEmpty(cookie)) {
@@ -155,19 +162,22 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 					String strbomModified = (String) (item.get("modified"));
 					String strbomOriginated = (String) (item.get("originated"));
 					String strBOMComponentName = (String) (item.get(DomainConstants.SELECT_NAME));
-					System.out.println("id------->> "+strBOMComponentId+" _____ originated-----> "+ strbomOriginated);
+					String strBOMComponentTitle = (String) (item.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PLMENTITY_V_NAME));
+					logger.writeLog("id------->> "+strBOMComponentId+" _____ originated-----> "+ strbomOriginated);
 					DomainRelationship domRelBOMComponents = DomainRelationship.newInstance(context, strConnectionId);
-					String strProcessStatusFlag = domRelBOMComponents.getAttributeValue(context,
-							lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG);
+					String strProcessStatusFlag = domRelBOMComponents.getAttributeValue(context,lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG);
 					String strCAID = domRelBOMComponents.getAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_CAID);
-
+                    String strRequestString ="";
 					if (UIUtil.isNotNullAndNotEmpty(strBOMComponentId)) {
-						if (LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_Waiting.equalsIgnoreCase(strProcessStatusFlag)) {
+						if (LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_Waiting.equalsIgnoreCase(strProcessStatusFlag)) 
+						{
 							if (lcdSAPInteg3DExpConstants.TYPE_MANUFACTURING_ASSEMBLY.equalsIgnoreCase(strBOMComponentType)) {
 								if (UIUtil.isNotNullAndNotEmpty(strCAID)) {
-									joBomPayload = getManAssemblyJSON(context, strBOMComponentId,
-											strBOMComponentType, strCAID, strConnectionId, lcdSAPInteg3DExpConstants);
+									joBomPayload = getManAssemblyJSON(context, strBOMComponentId,strBOMComponentType, strCAID, strConnectionId, lcdSAPInteg3DExpConstants);
 									if (UIUtil.isNotNullAndNotEmpty(joBomPayload.toString())) {
+										  strRequestString = joBomPayload.toString();
+										 jsonLogger.writeLog("JSON Payload Request for : <<< " + strBOMComponentTitle+ " : >>> \n " + strRequestString + " \n ");
+										 logger.writeLog("JSON Payload Request for  : <<< " + strBOMComponentTitle + " : >>> \n "+ strRequestString + " \n ");
 										intResponseCode = callPostService(context, joBomPayload, lcdSAPInteg3DExpConstants);
 									} else {
 										logger.writeLog(
@@ -176,16 +186,37 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 									processWebServiceResponseForManufacturingAssembly(context, intResponseCode,
 											strConnectionId, lcdSAPInteg3DExpConstants);
 								}
-							} else {
+							} else if (lcdSAPInteg3DExpConstants.TYPE_VPM_REFERENCE.equalsIgnoreCase(strBOMComponentType)){
 								Map<?, ?> mCadPartDetails = getCADPartDetails(context, strBOMComponentId, lcdSAPInteg3DExpConstants);
-								String strProcurementIntent = (String) mCadPartDetails
-										.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PROCUREMENTINTENT_VPMREFERENCE);
+								String strProcurementIntent = (String) mCadPartDetails.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PROCUREMENTINTENT_VPMREFERENCE);
 								if (LCDSAPIntegrationDataConstants.SUBCONTRACT.equalsIgnoreCase(strProcurementIntent)) {
+									String strReleasedDate = (String) mCadPartDetails.get("attribute[XP_VPMReference_Ext.AtievaActualReleasedDate]");
+									logger.writeLog("Part released 1st date  " + strReleasedDate);
+									if (UIUtil.isNotNullAndNotEmpty(strReleasedDate)) {
+										
+										strReleasedDate = strReleasedDate.substring(0, strReleasedDate.length() - 11);
+										logger.writeLog("Part released 2nd date  " + strReleasedDate);
+										if (UIUtil.isNotNullAndNotEmpty(strReleasedDate)) {
+											
+											SimpleDateFormat format1 = new SimpleDateFormat("MM/dd/yyyy");
+											SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
+											Date date = format1.parse(strReleasedDate);
+											String formatDate = format2.format(date);
+											logger.writeLog("Part released format date  " + formatDate);
+											setPartReleasedDate(formatDate);
+										}
+									}
+									
+
 									joBomPayload = getPhysicalProductJSON(context, mCadPartDetails, strConnectionId, lcdSAPInteg3DExpConstants);
+									 strRequestString = joBomPayload.toString();
+									 jsonLogger.writeLog("JSON Payload Request for : <<< " + strBOMComponentTitle+ " : >>> \n " + strRequestString + " \n ");
+									 logger.writeLog("JSON Payload Request for  : <<< " + strBOMComponentTitle + " : >>> \n "+ strRequestString + " \n ");
 									intResponseCode = callPostService(context, joBomPayload, lcdSAPInteg3DExpConstants);
 									processWebServiceResponseForSubContract(context, intResponseCode, strConnectionId, lcdSAPInteg3DExpConstants);
 								}
 							}
+						}
 						} else if (LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_COMPLETE.equalsIgnoreCase(strProcessStatusFlag)) {
 							disconnectExpiredObjectsFromAnchorObject(context, strConnectionId, strbomModified);
 						}
@@ -195,8 +226,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 			//} else {
 			//	logger.writeLog("ERROR : Failed to get x-csrf-token and cookies from SAP Webservice ");
 			//}
-
-		} catch (Exception e) {
+          catch (Exception e) {
 			e.printStackTrace();
 		} finally {
 			httpClient.close();
@@ -213,35 +243,35 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 	 */
 	private MapList findRelevantObjectsConnectedToAnchorObject(Context context, LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants) throws Exception {
 
-		BusinessObject busObjAchor = new BusinessObject(lcdSAPInteg3DExpConstants.TYPE_LCD_BOM_ANCHOR_OBJECT, // String Type
-				lcdSAPInteg3DExpConstants.NAME_LCD_BOM_ANCHOR_OBJECT, // String Name
-				lcdSAPInteg3DExpConstants.REVISION_LCD_BOM_ANCHOR_OBJECT, // String Revision
-				lcdSAPInteg3DExpConstants.VAULT_ESERVICE_PRODUCTION); // String Vault
+			BusinessObject busObjAchor = new BusinessObject(lcdSAPInteg3DExpConstants.TYPE_LCD_BOM_ANCHOR_OBJECT, // String Type
+					lcdSAPInteg3DExpConstants.NAME_LCD_BOM_ANCHOR_OBJECT, // String Name
+					lcdSAPInteg3DExpConstants.REVISION_LCD_BOM_ANCHOR_OBJECT, // String Revision
+					lcdSAPInteg3DExpConstants.VAULT_ESERVICE_PRODUCTION); // String Vault
 
-		DomainObject domObj = DomainObject.newInstance(context, busObjAchor);
+			DomainObject domObj = DomainObject.newInstance(context, busObjAchor);
 
-		StringList slObjectSelect = new StringList();
-		slObjectSelect.add(DomainConstants.SELECT_ID);
-		slObjectSelect.add(DomainConstants.SELECT_TYPE);
-		slObjectSelect.add(DomainConstants.SELECT_NAME);
+			StringList slObjectSelect = new StringList();
+			slObjectSelect.add(DomainConstants.SELECT_ID);
+			slObjectSelect.add(DomainConstants.SELECT_TYPE);
+			slObjectSelect.add(DomainConstants.SELECT_NAME);
+			slObjectSelect.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PLMENTITY_V_NAME);
 
-		StringList slRelSelect = new StringList();
-		slRelSelect.add(DomainRelationship.SELECT_ID);
-		slRelSelect.add("modified");
-		slRelSelect.add("originated");
+			StringList slRelSelect = new StringList();
+			slRelSelect.add(DomainRelationship.SELECT_ID);
+			slRelSelect.add("modified");
+			slRelSelect.add("originated");
 
-		return (domObj.getRelatedObjects(context, // context
-				lcdSAPInteg3DExpConstants.RELATIONSHIP_LCD_SAP_BOM_INTERFACE, // Relationship Pattern
-				"*", // Type Pattern
-				slObjectSelect, // Object Select
-				slRelSelect, // Relationship Select
-				false, // To Side
-				true, // from Side
-				(short) 1, // Recursion Level
-				"", // Object Where clause
-				"", // Relationship Where clause
-				0)); // limit;
-
+			return (domObj.getRelatedObjects(context, // context
+					lcdSAPInteg3DExpConstants.RELATIONSHIP_LCD_SAP_BOM_INTERFACE, // Relationship Pattern
+					"*", // Type Pattern
+					slObjectSelect, // Object Select
+					slRelSelect, // Relationship Select
+					false, // To Side
+					true, // from Side
+					(short) 1, // Recursion Level
+					"", // Object Where clause
+					"", // Relationship Where clause
+					0)); // limit;
 	}
 
 	/**
@@ -308,12 +338,12 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 
 						JsonObjectBuilder jEachPayloadBuilder = Json.createObjectBuilder();
 
-						if (changeActionMap.containsKey(caId)) {
-							jEachPayloadBuilder = changeActionMap.get(caId);
-						} else {
+//						if (changeActionMap.containsKey(caId)) {
+//							jEachPayloadBuilder = changeActionMap.get(caId);
+//						} else {
 							jEachPayloadBuilder = ChangeActionJSONPayload(context, caId, strConnectionId, lcdSAPInteg3DExpConstants);
-							changeActionMap.put(caId, jEachPayloadBuilder);
-						}
+//							changeActionMap.put(caId, jEachPayloadBuilder);
+//						}
 
 						if (null != jEachPayloadBuilder) {
 
@@ -355,7 +385,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 								if (lcdSAPInteg3DExpConstants.TYPE_MANUFACTURING_ASSEMBLY.equalsIgnoreCase(strBOMComponentType)) {
 									if (LCDSAPIntegrationDataConstants.VALUE_FALSE.equalsIgnoreCase(strHasConfig)) {
 										logger.writeLog("INFO ::Realized Item << " + strObjTitle
-												+ " >> is with Procurement Intent : << " + strObjProcIntent + " >> ");
+												+ " >> is with Procurement Intent : << " + strObjProcIntent + " >> "+ " >> Has conifg : << " + strHasConfig + " >> ");
 										setConfiguredFlag(false);
 									} else if (LCDSAPIntegrationDataConstants.TRUE.equalsIgnoreCase(strHasConfig)) {
 										logger.writeLog("INFO ::configured Realized Item is << " + strObjTitle
@@ -380,11 +410,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 
 										// STEP : Invoking SAP WebService by attaching JSON
 										jEachPayloadObj = jEachPayloadBuilder.build();
-										strRequestString = jEachPayloadObj.toString();
-										jsonLogger.writeLog("JSON Payload Request for : <<< " + strObjTitle
-												+ " : >>> \n " + strRequestString + " \n ");
-										logger.writeLog("JSON Payload Request for  : <<< " + strObjTitle + " : >>> \n "
-												+ strRequestString + " \n ");
+										//strRequestString = jEachPayloadObj.toString();
+										//jsonLogger.writeLog("JSON Payload Request for : <<< " + strObjTitle+ " : >>> \n " + strRequestString + " \n ");
+										//logger.writeLog("JSON Payload Request for  : <<< " + strObjTitle + " : >>> \n "+ strRequestString + " \n ");
 									} else
 										logger.writeLog("ERROR :: Failed to add realized item  : << " + strObjTitle
 												+ ">> header for Change Action : << " + changeActionName);
@@ -468,9 +496,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 
 				jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_PLATFORM, LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 				
-				jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_START_DATE, LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
+				//jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_START_DATE, LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 				
-				jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_END_DATE, LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
+				//jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_END_DATE, LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 			} else {
 
 				// STEP : Retrieving Change Action Details from Input Change Action JSON
@@ -489,6 +517,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 
 				// STEP : Retrieving Change Action Details from Input Change Action JSON
 				JsonArray caAttributes = changeActionObject.getJsonArray("attributes");
+				logger.writeLog("Change Action attribute json << "+ caAttributes.toString() + " >>");
 				String attrName;
 				String attrValue;
 				JsonObject caAttribute;
@@ -514,6 +543,19 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 					}
 				}
 
+				String strCACompletionDate = mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_CHANGE_ACTION_RELEASED_DATE);
+				if (UIUtil.isNotNullAndNotEmpty(strCACompletionDate)) {
+					strCACompletionDate = strCACompletionDate.substring(0, strCACompletionDate.length() - 11);
+					if (UIUtil.isNotNullAndNotEmpty(strCACompletionDate)) {
+						SimpleDateFormat format1 = new SimpleDateFormat("MM/dd/yyyy");
+						SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
+						Date date = format1.parse(strCACompletionDate);
+						String formatDate = format2.format(date);
+						setCACompletionDate(formatDate);
+					}
+				}
+				
+			
 				// STEP : Retrieving Change Action object ID from Change Action Physical ID
 				String changeActionObjId = null;
 				if (UIUtil.isNotNullAndNotEmpty(changeObjPhyId)) {
@@ -555,7 +597,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 				if (UIUtil.isNotNullAndNotEmpty(mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_CHANGE_ACTION_PLATFORM)))
 					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_PLATFORM, mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_CHANGE_ACTION_PLATFORM));
 				
-				if (UIUtil.isNotNullAndNotEmpty(mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_START_DATE)))
+				/*if (UIUtil.isNotNullAndNotEmpty(mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_START_DATE)))
 					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_START_DATE, mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_START_DATE));
 				else
 					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_START_DATE, "");
@@ -563,7 +605,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 				if (UIUtil.isNotNullAndNotEmpty(mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_END_DATE)))
 					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_END_DATE, mcaDetails.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_PROPOSED_APPLICABILITY_END_DATE));
 				else
-					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_END_DATE, "");
+					jEachPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_CA_APPLICABILITY_END_DATE, "");*/
 
 				logger.writeLog("Change Action Header :: << " + jEachPayloadBuilder.build().toString() + ">>");
 
@@ -645,7 +687,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 			else
 				jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_PARTINTERCHANGEABILITY, " ");
 
-			jHeaderPartObjectBuilder.add(lcdSAPInteg3DExpConstants.EFFECTIVITY_VARIANT, LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
+			jHeaderPartObjectBuilder.add("Effectivity_Option_Code", LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 			jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 			jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 			jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_REALIZED_DATA, true);
@@ -712,7 +754,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 			}
 			// STEP : adding child parts JSON Array in Header Part JSON object
 			if (null != jsonMBOMPartArrayBuilder)
-				jHeaderPartObjectBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_HEADER_PART, jsonMBOMPartArrayBuilder.build());
+				jHeaderPartObjectBuilder.add("children", jsonMBOMPartArrayBuilder.build());
 			else
 				logger.writeLog("ERROR :: Unable to add children header under Manufacturing Assembly ");
 
@@ -757,6 +799,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 			// STEP : Defining Relationship Selectables
 			StringList relSelects = new StringList();
 			relSelects.add(DomainConstants.SELECT_RELATIONSHIP_ID);
+			relSelects.add(DomainConstants.SELECT_PHYSICAL_ID);
 			relSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_HAS_CONFIG_EFFECTIVITY);
 			DomainObject partDomObj = DomainObject.newInstance(context, strObjectId);
 
@@ -827,7 +870,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 						strServiceable = (String) mLinkedCadPart.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_SERVICEABLEITEM_VPMREFERENCE);
 						strPartInterchangeability = (String) mLinkedCadPart
 								.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PARTINTERCHANGEABILITY_VPMREFERENCE);
-						strUnitOfMeasure = (String) mLinkedCadPart.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_UNITOFMEASURE_VPMREFERENCE);
+						strUnitOfMeasure = (String) mLinkedCadPart.get("attribute[XP_VPMReference_Ext.AtievaUnitofMeasure]");
 					}
 				}
 			}
@@ -928,9 +971,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 				jMBOMPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_PARTINTERCHANGEABILITY, " ");
 
 			if (UIUtil.isNotNullAndNotEmpty(strVariantEffectivity))
-				jMBOMPartBuilder.add(lcdSAPInteg3DExpConstants.EFFECTIVITY_VARIANT, strVariantEffectivity);
+				jMBOMPartBuilder.add("Effectivity_Option_Code", strVariantEffectivity);
 			else
-				jMBOMPartBuilder.add(lcdSAPInteg3DExpConstants.EFFECTIVITY_VARIANT, " ");
+				jMBOMPartBuilder.add("Effectivity_Option_Code", " ");
 
 			if (getConfiguredFlag()) {
 				// False Effectivity Case :: In JSON { "Start Date" : Start date of CA and "End
@@ -980,8 +1023,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 				List<String> lstRealizedChanges = new List<String>();
 				lstRealizedChanges = getRealizedItemList();
 
-				if (lstRealizedChanges.contains(strRelPhyId))
+				if (lstRealizedChanges.contains(strRelPhyId)) {
 					jMBOMPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_REALIZED_DATA, true);
+				}
 				else
 					jMBOMPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_REALIZED_DATA, false);
 
@@ -1059,8 +1103,9 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_SERVICEABLEITEM_VPMREFERENCE); // "Serviceable Item";
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PROCUREMENTINTENT_VPMREFERENCE); // "Procurement Intent"
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PARTINTERCHANGEABILITY_VPMREFERENCE); // "Part Interchangeability ";
-				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_UNITOFMEASURE_VPMREFERENCE); // "Unit of Measure";
-
+				objectSelects.add("attribute[XP_VPMReference_Ext.AtievaUnitofMeasure]"); // "Unit of Measure";
+				objectSelects.add("attribute[XP_VPMReference_Ext.AtievaActualReleasedDate]"); //Released data of Part
+				
 				DomainObject boCADObj = DomainObject.newInstance(context, strOBJId);
 				objInfoMap = boCADObj.getInfo(context, objectSelects);
 				return objInfoMap;
@@ -1097,7 +1142,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_SERVICEABLEITEM_VPMREFERENCE); // "Serviceable Item";
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PROCUREMENTINTENT_VPMREFERENCE); // "Procurement Intent"
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PARTINTERCHANGEABILITY_VPMREFERENCE); // "Part Interchangeability ";
-				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_UNITOFMEASURE_VPMREFERENCE); // "Unit of Measure";
+				objectSelects.add("attribute[XP_VPMReference_Ext.AtievaUnitofMeasure]"); // "Unit of Measure";
 
 				// RelationShip Selectables
 				StringList relInfoList = new StringList();
@@ -1243,7 +1288,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 					// STEP : creating the SubContract Part header JSON Object
 					if (null != jsubContractChildPartArrayBuilder) {
 						if (!jsubContractChildPartArrayBuilder.build().isEmpty()) {
-							jSubContractBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_HEADER_PART, jsubContractChildPartArrayBuilder.build());
+							jSubContractBuilder.add("children", jsubContractChildPartArrayBuilder.build());
 						}
 						if (null != jSubContractBuilder)
 							jEachSubContractPayloadBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_HEADER_PART, jSubContractBuilder.build());
@@ -1330,7 +1375,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 			else
 				jSubContractBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_PARTINTERCHANGEABILITY, " ");
 
-			jSubContractBuilder.add(lcdSAPInteg3DExpConstants.EFFECTIVITY_VARIANT, LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
+			jSubContractBuilder.add("Effectivity_Option_Code", LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 			jSubContractBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 			jSubContractBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 			jSubContractBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_REALIZED_DATA, true);
@@ -1367,7 +1412,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_SERVICEABLEITEM_VPMREFERENCE); // "Serviceable Item";
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PROCUREMENTINTENT_VPMREFERENCE); // "Procurement Intent"
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PARTINTERCHANGEABILITY_VPMREFERENCE); // "Part Interchangeability ";
-				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_UNITOFMEASURE_VPMREFERENCE); // "Unit of Measure";
+				objectSelects.add("attribute[XP_VPMReference_Ext.AtievaUnitofMeasure]"); // "Unit of Measure";
 
 				// RelationShip Selectables
 				StringList relSelects = new StringList();
@@ -1413,13 +1458,13 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 			String strObjectID = (String) mchildPartDetails.get(DomainObject.SELECT_ID);
 			String strRId = (String) mchildPartDetails.get(DomainConstants.SELECT_RELATIONSHIP_ID);
 			String strdesc = (String) mchildPartDetails.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PLMENTITY_V_DESCRIPTION);
-			String strUnitOfMeasure = (String) mchildPartDetails.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_UNITOFMEASURE_VPMREFERENCE);
+			String strUnitOfMeasure = (String) mchildPartDetails.get("attribute[XP_VPMReference_Ext.AtievaUnitofMeasure]");
 			String strProcIntent = (String) mchildPartDetails.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PROCUREMENTINTENT_VPMREFERENCE);
 			String strServiceItem = (String) mchildPartDetails.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_SERVICEABLEITEM_VPMREFERENCE);
 			String strPartability = (String) mchildPartDetails.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PARTINTERCHANGEABILITY_VPMREFERENCE);
 			String strhasConfigEffectivity = (String) mchildPartDetails.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_HAS_CONFIG_EFFECTIVITY);
 
-			String strVariantEffectivity = null;
+			/*String strVariantEffectivity = null;
 			String strEffectivityObject = null;
 			String strDateEffectivity = "";
 			String strCADReleaseDateIn = "";
@@ -1454,7 +1499,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 						}
 					}
 				}
-			}
+			}*/
 			// STEP : Adding information of each BuySubC Part IN JSON Object
 
 			if (UIUtil.isNotNullAndNotEmpty(strVName))
@@ -1502,18 +1547,23 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 			else
 				jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_PARTINTERCHANGEABILITY, " ");
 
-			jCadPartBuilder.add(lcdSAPInteg3DExpConstants.EFFECTIVITY_VARIANT, LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
+			jCadPartBuilder.add("Effectivity_Option_Code", LCDSAPIntegrationDataConstants.VALUE_NOT_APPLICABLE);
 
-			SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd");
-			SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
-			if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateIn)) {
+			//SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd");
+			//SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
+			/*if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateIn)) {
 				Date date = format1.parse(strCADReleaseDateIn);
 				String formatDate = format2.format(date);
 				jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, formatDate);
 			} else
-				jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, " ");
-
-			if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateOut)) {
+				jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, " ");*/
+			
+			jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, getPartReleasedDate());
+			
+			String strCADReleaseDateOut = "12-31-9999";
+			jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, strCADReleaseDateOut);
+			
+			/*if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateOut)) {
 				if (strCADReleaseDateOut.equals("INF")) {
 					strCADReleaseDateOut = "12-31-9999";
 					jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, strCADReleaseDateOut);
@@ -1523,7 +1573,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 					jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, formatDate);
 				}
 			} else
-				jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, " ");
+				jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, " ");*/
 
 			jCadPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_REALIZED_DATA, true);
 
@@ -1560,7 +1610,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_SERVICEABLEITEM_VPMREFERENCE); // "Serviceable Item";
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PROCUREMENTINTENT_VPMREFERENCE); // "Procurement Intent"
 				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_PARTINTERCHANGEABILITY_VPMREFERENCE); // "Part Interchangeability ";
-				objectSelects.add(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_UNITOFMEASURE_VPMREFERENCE); // "Unit of Measure";
+				objectSelects.add("attribute[XP_VPMReference_Ext.AtievaUnitofMeasure]"); // "Unit of Measure";
 
 				// RelationShip Selectables
 				StringList relSelects = new StringList();
@@ -1643,11 +1693,13 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 			
 			StringEntity params = new StringEntity(jEachPayloadObj.toString());
 			
+			
 			// STEP : Creating request header for SAP WebService GET Method call
 			postURL.setHeader(authorization, "Basic " + authStringEnc);
 			postURL.setHeader(contentType, "application/json");
 			postURL.setEntity(params);
 
+			logger.writeLog("Before Calling SAP Webservice Payload " + params);	
 			// STEP : Invoking SAP webService with Post Method
 			HttpResponse response = httpClient.execute(postURL);
 			logger.writeLog("postURL -- " + postURL);
@@ -1687,17 +1739,17 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 
 			DomainRelationship domRelBomConnectedToAnchorObj = DomainRelationship.newInstance(context, strConnectionId);
 
-			if (intResponseCode == 200 || intResponseCode == 201 || intResponseCode == 202) {
+			if (intResponseCode == 200 || intResponseCode == 201 || intResponseCode == 202 ) {
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG, LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_IN_WORK);
-				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE,
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_SAP_FEEDBACK_MESSAGE,
 						LCDSAPIntegrationDataConstants.MSG_JSON_FORMAT_VALIDATION_COMPLETED);
 			} else if (intResponseCode == 417) {
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG, LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_FAILED);
-				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE,
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_SAP_FEEDBACK_MESSAGE,
 						LCDSAPIntegrationDataConstants.MSG_JSON_FORMAT_VALIDATION_FAILED);
 			} else {
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG, LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_FAILED);
-				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE,
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_SAP_FEEDBACK_MESSAGE,
 						LCDSAPIntegrationDataConstants.MSG_NETWORK_FAILURE);
 			}
 			ContextUtil.popContext(context);
@@ -1724,15 +1776,15 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 
 			if (intResponseCode == 200 || intResponseCode == 201 || intResponseCode == 202 ) {
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG, LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_IN_WORK);
-				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE,
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_SAP_FEEDBACK_MESSAGE,
 						LCDSAPIntegrationDataConstants.MSG_JSON_FORMAT_VALIDATION_COMPLETED);
 			} else if (intResponseCode == 417) {
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG, LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_FAILED);
-				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE,
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_SAP_FEEDBACK_MESSAGE,
 						LCDSAPIntegrationDataConstants.MSG_JSON_FORMAT_VALIDATION_FAILED);
 			} else {
 				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_PROCESS_STATUS_FLAG, LCDSAPIntegrationDataConstants.VALUE_PROCESS_STATUS_FLAG_FAILED);
-				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_REASON_FOR_FAILURE,
+				domRelBomConnectedToAnchorObj.setAttributeValue(context, lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_SAP_FEEDBACK_MESSAGE,
 						LCDSAPIntegrationDataConstants.MSG_NETWORK_FAILURE);
 			}
 			ContextUtil.popContext(context);
@@ -1785,6 +1837,28 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 	 */
 	private static String getCACompletionDate() {
 		return caReleasedDate;
+	}
+
+	/**
+	 * This Method is to Set the Change Action Completion Date
+	 *
+	 * @param context
+	 * @return CA_RELEASED_DATE : Change Action Completion Date
+	 * @throws Exception
+	 */
+	private void setPartReleasedDate(String strPartReleasedDate) {
+		partReleasedDate = strPartReleasedDate;
+	}
+
+	/**
+	 * This Method is to Get the Change Action Completion Date
+	 *
+	 * @param context
+	 * @return CA_RELEASED_DATE : Change Action Completion Date
+	 * @throws Exception
+	 */
+	private static String getPartReleasedDate() {
+		return partReleasedDate;
 	}
 
 	/**
@@ -1880,7 +1954,7 @@ public class LCD_3DXSAPIntegrationScheduler_mxJPO {
 	 */
 	private static List<String> getRealizedItemList() throws Exception {
 		List<String> lstRealizedChanges = new List<String>();
-		if (LIST_REALIZED_CHANGES.size() != 0) {
+		if (LIST_REALIZED_CHANGES != null && LIST_REALIZED_CHANGES.size() != 0) {
 			return LIST_REALIZED_CHANGES;
 		} else
 			return lstRealizedChanges;

@@ -11,20 +11,23 @@ public class LCDSAPIntegration3DExpConstants {
 	private Context context;
 	public final String ATTRIBUTE_PLMENTITY_V_DESCRIPTION = PropertyUtil.getSchemaProperty(context, "attribute_PLMEntity.V_description");
 	public final String ATTRIBUTE_PLMENTITY_V_NAME = PropertyUtil.getSchemaProperty(context, "attribute_PLMEntity.V_Name");
-	public final String NAME_LCD_BOM_ANCHOR_OBJECT = "LCD_AnchorObject";
+	public final String NAME_LCD_BOM_ANCHOR_OBJECT = "LCD_BOMAnchorObject";
 	public final String REVISION_LCD_BOM_ANCHOR_OBJECT = "A";
+	public final String POLICY_LCD_3DX_SAP_INTEGRATION = PropertyUtil.getSchemaProperty(context, "policy_LCD_3DXSAPIntegration");
 	public final String SELECT_ATTRIBUTE_ACTUAL_COMPLETION_DATE = DomainObject.getAttributeSelect(DomainConstants.ATTRIBUTE_ACTUAL_COMPLETION_DATE);
 	public final String SELECT_ATTRIBUTE_PLMENTITY_V_DESCRIPTION = DomainObject.getAttributeSelect(ATTRIBUTE_PLMENTITY_V_DESCRIPTION);
 	public final String SELECT_ATTRIBUTE_PLMENTITY_V_NAME = DomainObject.getAttributeSelect(ATTRIBUTE_PLMENTITY_V_NAME);
 	public final String TYPE_LCD_BOM_ANCHOR_OBJECT = PropertyUtil.getSchemaProperty(context, "type_LCD_BOMAnchorObject");
 	public final String VAULT_ESERVICE_PRODUCTION = PropertyUtil.getSchemaProperty(context, "vault_eServiceProduction");
 	public final String ATTRIBUTE_LCD_PROCESS_STATUS_FLAG = PropertyUtil.getSchemaProperty(context, "attribute_LCD_ProcessStatusFlag");
-	public final String ATTRIBUTE_LCD_REASON_FOR_FAILURE = PropertyUtil.getSchemaProperty(context, "attribute_LCD_ReasonforFailure");
+	public final String ATTRIBUTE_LCD_SAP_FEEDBACK_MESSAGE = PropertyUtil.getSchemaProperty(context, "attribute_LCD_SAPFeedbackMessage");
 	public final String SELECT_ATTRIBUTE_LCD_PROCESS_STATUS_FLAG = DomainObject.getAttributeSelect(ATTRIBUTE_LCD_PROCESS_STATUS_FLAG);
-	public final String SELECT_ATTRIBUTE_LCD_REASON_FOR_FAILURE = DomainObject.getAttributeSelect(ATTRIBUTE_LCD_REASON_FOR_FAILURE);
+	public final String SELECT_ATTRIBUTE_LCD_SAP_FEEDBACK_MESSAGE = DomainObject.getAttributeSelect(ATTRIBUTE_LCD_SAP_FEEDBACK_MESSAGE);
 	public final String ATTRIBUTE_LCD_CAID = PropertyUtil.getSchemaProperty(context, "attribute_LCD_CAID");
 	public final String SELECT_ATTRIBUTE_LCD_CAID = DomainObject.getAttributeSelect(ATTRIBUTE_LCD_CAID);
 	public final String ATTRIBUTE_LCD_MF_SAPMBOMUpdatedOn = PropertyUtil.getSchemaProperty(context, "attribute_LCDMF_ManufacturingAssembly.LCDMF_SAPMBOMUpdatedOn");
+	public final String ATTRIBUTE_LCD_VPMREFERENCE_SAP_MBOM_UPDATED_ON = PropertyUtil.getSchemaProperty(context, "attribute_LCD_VPMReferenceExt.LCD_SAPMBOMUpdatedOn");
+	public final String SELECT_ATTRIBUTE_LCD_VPMREFERENCE_SAP_MBOM_UPDATED_ON = DomainObject.getAttributeSelect(ATTRIBUTE_LCD_VPMREFERENCE_SAP_MBOM_UPDATED_ON);
 	public final String ATTRIBUTE_LCD_MF_SAP_UNIQUEID = PropertyUtil.getSchemaProperty(context, "attribute_LCDMF_ManufacturingAssembly.LCDMF_SAPUniqueID");
 	public final String SELECT_ATTRIBUTE_LCD_MF_SAP_UNIQUEID = DomainObject.getAttributeSelect(ATTRIBUTE_LCD_MF_SAP_UNIQUEID);
 	public final String SELECT_ATTRIBUTE_LCD_MF_SAPMBOMUpdatedOn = DomainObject.getAttributeSelect(ATTRIBUTE_LCD_MF_SAPMBOMUpdatedOn);
@@ -86,6 +89,11 @@ public class LCDSAPIntegration3DExpConstants {
 	public final String TYPE_VPM_REP_INSTANCE = PropertyUtil.getSchemaProperty(context, "type_VPMRepInstance");
 	public final String TYPE_XCAD_ASSEMBLY_REP_REFERENCE = PropertyUtil.getSchemaProperty(context, "type_XCADAssemblyRepReference");
 	public final String TYPE_MANUFACTURING_ASSEMBLY = PropertyUtil.getSchemaProperty(context, "type_CreateAssembly");
+	public final String TYPE_VPMREFERENCE = PropertyUtil.getSchemaProperty(context, "type_VPMReference");
+	public final String TYPE_ELECTRICALBRANCHGEOMETRY = PropertyUtil.getSchemaProperty(context, "type_ElectricalBranchGeometry");
+	public final String TYPE_ELECTRICALGEOMETRY = PropertyUtil.getSchemaProperty(context, "type_ElectricalGeometry");
+	public final String TYPE_PIPING_RIGID_PIPE = PropertyUtil.getSchemaProperty(context, "type_Piping_Rigid_Pipe");
+	public final String TYPE_SPOTFASTENERSINGLE = PropertyUtil.getSchemaProperty(context, "type_SpotFastenerSingle");
 	public final String TYPE_PROVIDE = PropertyUtil.getSchemaProperty(context, "type_Provide");
 	public final String TYPE_PROCESS_INSTANCE_CONTINUOUS = PropertyUtil.getSchemaProperty(context, "type_ProcessContinuousProvide");
 	public final String TYPE_FASTEN = PropertyUtil.getSchemaProperty(context, "type_Fasten");
@@ -96,6 +104,7 @@ public class LCDSAPIntegration3DExpConstants {
 	public final String EFFECTIVITY_TO_DATE = "Effectivity_To_Date";
 	public final String ROLE_ADMIN = "admin_platform";
 	public final String LCD_3DX_SAP_INTEGRATION_KEY = "LCD_3DXSAPStringResource_en";
+
 	
 	public LCDSAPIntegration3DExpConstants(Context context) {
 		this.context = context;
