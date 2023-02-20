@@ -1,6 +1,5 @@
 package com.lcd.sapintegration.util;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -20,7 +19,6 @@ import matrix.db.Context;
 import matrix.util.StringList;
 
 public class LCDSAPIntegrationAnchorObject {
-	private final Map<String, Map<?,?>> multipleCAInfoMap = new HashMap<>();
 	
 	/**
 	 * @param context
@@ -81,7 +79,7 @@ public class LCDSAPIntegrationAnchorObject {
 			Map<?, ?> tempAssmblyDataMap = (Map<?, ?>) iterMLAssmblyConnectedToAnchorObject.next();
 			String strLCDSAPInterfaceConnId = (String) tempAssmblyDataMap.get(DomainRelationship.SELECT_ID);
 			Map<?,?> tempLCDSAPInterfaceConnDataMap = DomainRelationship.newInstance(context, strLCDSAPInterfaceConnId).getAttributeMap(context);
-			String strCAID = (String) tempLCDSAPInterfaceConnDataMap.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_CAID);
+			String strCAID = ((String) tempLCDSAPInterfaceConnDataMap.get(lcdSAPInteg3DExpConstants.ATTRIBUTE_LCD_CAID)).trim();
 			String strBomType = (String) tempAssmblyDataMap.get(DomainConstants.SELECT_TYPE);
 			if(UIUtil.isNotNullAndNotEmpty(strCAID)) {
 			Map<?, ?> changeActionAttrDetailsMap = getChangeActionDetails(context, strCAID, slCAobjectSelects);
@@ -122,11 +120,8 @@ public class LCDSAPIntegrationAnchorObject {
 	 * @throws FrameworkException
 	 */
 	private Map<?,?> getChangeActionDetails(Context context, String strCAId, StringList slObjSelects) throws FrameworkException{
-		if(!multipleCAInfoMap.containsKey(strCAId)) {
 			DomainObject domObjCA = DomainObject.newInstance(context, strCAId);
-			multipleCAInfoMap.put(strCAId, domObjCA.getInfo(context, slObjSelects));
-		}
-		return multipleCAInfoMap.get(strCAId);
+			return domObjCA.getInfo(context, slObjSelects);
 	}
 	
 }
