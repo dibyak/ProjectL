@@ -10,16 +10,13 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Map;
-import java.util.logging.Logger;
+//import java.util.logging.Logger;
 
 import javax.json.JsonArray;
 import javax.json.JsonObject;
-import javax.ws.rs.core.Response;
 
-import org.apache.jena.rdfxml.xmloutput.impl.SimpleLogger;
-
-//import org.slf4j.Logger;
-//import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.matrixone.apps.domain.DomainConstants;
 import com.matrixone.apps.domain.DomainObject;
@@ -32,8 +29,8 @@ import matrix.util.StringList;
 
 public class LCDSAPIntegrationProceesAfterEbomAndMbomCreation {
 	private static SimpleLogger logger;
-//	private static final Logger loggerDebug = LoggerFactory.getLogger("LCD3DXSAPIntegrationCallFromSAP");
-	static Logger loggerDebug = Logger.getLogger("LCD3DXSAPIntegrationCallFromSAP");
+	private static Logger loggerDebug = LoggerFactory.getLogger("LCD3DXSAPIntegrationCallFromSAP");
+//	static Logger loggerDebug = Logger.getLogger("LCD3DXSAPIntegrationCallFromSAP");
 	
 												  	
 	public static String processAfterMBOMCreation(Context context, JsonObject jWebServiceResponse, String resultType,
