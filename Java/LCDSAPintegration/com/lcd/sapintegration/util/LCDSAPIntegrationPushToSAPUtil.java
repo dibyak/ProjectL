@@ -4,7 +4,6 @@ import java.io.StringReader;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
-import java.util.logging.Logger;
 
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -13,8 +12,8 @@ import javax.json.JsonReader;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-//import org.slf4j.Logger;
-//import org.slf4j.LoggerFactory;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import com.dassault_systemes.platform.restServices.RestService;
 import com.matrixone.apps.domain.DomainConstants;
@@ -29,8 +28,8 @@ import matrix.util.StringList;
 public class LCDSAPIntegrationPushToSAPUtil extends RestService {
 
 //	static Logger loggerDebug = Logger.getLogger("LCDSAPIntegrationPushToSAPUtil");
-//	private static final Logger loggerDebug = LoggerFactory.getLogger("LCDSAPIntegrationPushToSAP");
-	static Logger loggerDebug = Logger.getLogger("LCDSAPIntegrationPushToSAP");
+	private static final Logger loggerDebug = LoggerFactory.getLogger("LCDSAPIntegrationPushToSAP");
+//	static Logger loggerDebug = Logger.getLogger("LCDSAPIntegrationPushToSAP");
 	public static Response sendFailedDataToSap(Context context, String strParamString) throws NullPointerException {
 		loggerDebug.info("3DX Re Push to SAP WebService invoked from Admin UI");
 		LCDSAPIntegration3DExpConstants lcdSAPInteg3DExpConstants = new LCDSAPIntegration3DExpConstants(context);
