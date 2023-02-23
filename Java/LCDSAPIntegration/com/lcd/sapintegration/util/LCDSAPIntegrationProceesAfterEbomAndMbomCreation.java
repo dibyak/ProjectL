@@ -380,8 +380,6 @@ public class LCDSAPIntegrationProceesAfterEbomAndMbomCreation {
 			pr = new PrintWriter(bw);
 		}
 
-		
-
 		public void writeLog(String log) {
 			pr.println(log);
 			pr.flush();
