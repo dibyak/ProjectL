@@ -35,6 +35,7 @@ import com.matrixone.apps.domain.util.MapList;
 import com.matrixone.apps.domain.util.MqlUtil;
 import com.matrixone.apps.framework.ui.UIUtil;
 
+import matrix.db.Context;
 import matrix.util.Pattern;
 import matrix.util.StringList;
 
@@ -47,8 +48,9 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 	public static String CA_START_DATE;
 	public static List<String> LIST_REALIZED_CHANGES;
 	private static String partReleasedDate;
-
-	private static HashMap<String, JsonObjectBuilder> changeActionMap = new HashMap<>();
+	private static String connectionWithParentid;
+	private static String discreteStartDate;
+	private static String discreteEndDate;
 
 	public static JsonObject getManAssemblyJSON(matrix.db.Context context, String strBOMComponentId,
 			String strBOMComponentType, String caId, String connectionId, boolean bExportCSV) throws Exception {
@@ -83,17 +85,12 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 						JsonObjectBuilder jEachPayloadBuilder = Json.createObjectBuilder();
 
 						setCAStartDate();
-						if (changeActionMap.containsKey(caId)) {
-							jEachPayloadBuilder = changeActionMap.get(caId);
-						} else {
 							jEachPayloadBuilder = ChangeActionJSONPayload(context, caId, connectionId,lcdSAPInteg3DExpConstants, bExportCSV);
-							changeActionMap.put(caId, jEachPayloadBuilder);
-						}
 
 						if (null != jEachPayloadBuilder) {
 
 							// STEP : Traversing Change Action to get the realized items
-							JsonObject realizedItem;
+							JsonObject realizedItem = null;;
 							JsonArray realizedItems = getChangeActionJson().getJsonObject("changeaction")
 									.getJsonArray("realized");
 							String strHasConfig;
@@ -124,16 +121,25 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 										lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_SAP_MBOM_UPDATED_ON_MANUFACTURING_ASSEMBLY);
 								objectSelects.add(
 										lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_SAP_UNIQUE_ID_MANUFACTURING_ASSEMBLY);
+								objectSelects.add("physicalid");
 
 								mobjectDetails = domRealizedItemObj.getInfo(context, objectSelects);
 								strHasConfig = (String) mobjectDetails
 										.get(lcdSAPInteg3DExpConstants.SELECT_ATTRIBUTE_HASCONFIGCONTEXT_VPMREFERENCE);
+								String strBOMComponentPhysicalId = (String) mobjectDetails.get("physicalid");
 
 								// STEP : Check the realized item is Discrete Make Manufacturing Assembly
 								if (lcdSAPInteg3DExpConstants.TYPE_MANUFACTURING_ASSEMBLY
 										.equalsIgnoreCase(strBOMComponentType)) {
+									setCAStartDate();
 									if (LCDSAPIntegrationDataConstants.VALUE_FALSE.equalsIgnoreCase(strHasConfig)) {
 										setConfiguredFlag(false);
+										setConnectionIdWithParent("");
+										setDiscreteEndDate("");
+										setDiscreteStartDate("");
+										
+										configrealizedItemJson(context, realizedItems, strBOMComponentPhysicalId);
+										setDatesForDiscreteChild(context);
 									} else if (LCDSAPIntegrationDataConstants.TRUE.equalsIgnoreCase(strHasConfig)) {
 										setConfiguredFlag(true);
 										realizedItem = realizedItemJson(context, realizedItems, strBOMComponentId);
@@ -165,6 +171,65 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 		}
 		return jEachPayloadObj;
 	}
+	
+	private static void configrealizedItemJson(Context context, JsonArray realizedItems,String strBOMComponentId) throws Exception {
+		JsonObject joRealizedItem = null;
+		try {
+			String strParentRelId =""; 
+		for (int i = 0; i < realizedItems.size(); i++) {
+			JsonObject joItem = realizedItems.getJsonObject(i);
+			String isConfig = joItem.getJsonObject("where").getJsonObject("info").getString("isConfigured");
+			//String isConfig = joItem.getJsonObject("where").getJsonObject("info").getvalue("isConfigured");
+			if(isConfig.equals("true"))
+			{
+				strParentRelId = getParentRelId(joItem,strBOMComponentId );
+				if (UIUtil.isNotNullAndNotEmpty(strParentRelId)) {
+					return;
+				}
+			}
+		}
+		}catch (Exception e) {
+			e.printStackTrace();
+		}
+		return;
+	}
+
+	private static String getParentRelId( JsonObject realizedItem ,String strBOMComponentPhysicalId) throws Exception {
+		String relParentPhyId ="";
+		try {
+			JsonArray amos = realizedItem.getJsonArray("amo");
+			for (int a = 0; a < amos.size(); a++) {
+				JsonObject amo = amos.getJsonObject(a);
+				if (amo.containsKey("before")) {
+					String objPhyId = amo.getJsonObject("before").getJsonObject("instanceof").get("id").toString().split(":")[1].replace("\"","");
+					if(objPhyId.equals(strBOMComponentPhysicalId)){
+					String relPhyId = amo.getJsonObject("before").get("id").toString().split(":")[1].replaceAll("\"", "");
+					if (UIUtil.isNotNullAndNotEmpty(relPhyId)) {
+						setConnectionIdWithParent(relPhyId);
+						relParentPhyId = relPhyId;
+						return relParentPhyId ;
+				     }
+					}
+				}
+				if (amo.containsKey("after")) {
+					String objPhyId = amo.getJsonObject("after").getJsonObject("instanceof").get("id").toString().split(":")[1].replace("\"","");
+					if(objPhyId.equals(strBOMComponentPhysicalId)){
+						String relPhyId = amo.getJsonObject("after").get("id").toString().split(":")[1].replaceAll("\"", "");
+						if (UIUtil.isNotNullAndNotEmpty(relPhyId)) {
+							setConnectionIdWithParent(relPhyId);
+							relParentPhyId = relPhyId;
+							return relParentPhyId ;
+						}
+					}
+				}
+			}
+			}catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return relParentPhyId ;
+	}
+	
 
 	/**
 	 * This Method is to add the Change Action object details in JSON Header
@@ -746,7 +811,25 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 				else
 					jMBOMPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_REALIZED_DATA, false);
 
-			} else {
+			} 	else 
+			{
+				String strConnectionId = getConnectionIdWithParent();
+				if (UIUtil.isNotNullAndNotEmpty(strConnectionId)){
+					
+				 if (UIUtil.isNotNullAndNotEmpty(getDiscreteStartDate()))
+					    jMBOMPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, getDiscreteStartDate());
+				    else
+					    jMBOMPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, " ");
+				 
+				 if (UIUtil.isNotNullAndNotEmpty(getDiscreteEndDate()))
+					    jMBOMPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, getDiscreteEndDate());
+				    else
+					    jMBOMPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, " ");
+					 
+				    
+				}
+				else
+				{
 				if (UIUtil.isNotNullAndNotEmpty(getCACompletionDate()))
 					jMBOMPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATEFROM, getCACompletionDate());
 				else
@@ -754,6 +837,7 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 
 				jMBOMPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_DATETO, "12-31-9999");
 				jMBOMPartBuilder.add(LCDSAPIntegrationDataConstants.PROPERTY_REALIZED_DATA, true);
+				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1518,6 +1602,28 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 
 		return objInfoMap;
 	}
+	
+	
+	private static String getDiscreteStartDate() throws Exception {
+		return discreteStartDate;
+	}
+	
+	private static void setDiscreteStartDate(String strdiscreteDate) {
+		discreteStartDate = strdiscreteDate;
+	}
+	
+	
+	private static String getDiscreteEndDate() throws Exception {
+		return discreteEndDate;
+	}
+	
+	private static void setDiscreteEndDate(String strdiscreteDate) {
+		discreteEndDate = strdiscreteDate;
+	}
+
+	private static void setConnectionIdWithParent(String parentConnnectionId) throws Exception {
+		connectionWithParentid = parentConnnectionId;
+	}
 
 	/**
 	 * This Method is to Get the Change Action Completion Date
@@ -1654,6 +1760,10 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 		return caReleasedDate;
 	}
 	
+	private static String getConnectionIdWithParent()  {
+		return connectionWithParentid;
+    }
+	
 	/**
 	 * This Method is to Set the Change Action Completion Date
 	 *
@@ -1696,6 +1806,165 @@ public class LCDSAPIntegrationGenrateJsonPayload {
 	 */
 	private static void setFalseEffectivityFlag(boolean bFalseEffectivityFlag) throws Exception {
 		FALSE_EFFECTIVITY_STATUS = bFalseEffectivityFlag;
+	}
+	
+	private void retrieveConnectionIdWithParent(Context context, String strBOMComponentPhysicalId) throws Exception {
+		
+		try {
+			
+			JsonArray realizedItems = getChangeActionJson().getJsonObject("changeaction").getJsonArray("realized");
+			if(realizedItems.size() > 0) 
+			{
+			//String parentConnnectionId ="" ;
+			JsonArray amos =null;
+			JsonObject realizedItem =null;
+			for(int i = 0; i < realizedItems.size(); i++) {
+				realizedItem =null;
+				realizedItem = getChangeActionJson().getJsonObject("changeaction").getJsonArray("realized").getJsonObject(i);
+				//boolean IsFound = false;
+				amos =null;
+				amos = getChangeActionJson().getJsonObject("changeaction").getJsonArray("realized").getJsonObject(i).getJsonArray("amo");
+				//JsonObject realizedItem = realizedItems.getJsonObject(i);
+				JsonObject amo =null;
+				for(int a = 0; a < amos.size(); a++) 
+				{
+					amo =null;
+					amo = getChangeActionJson().getJsonObject("changeaction").getJsonArray("realized").getJsonObject(i).getJsonArray("amo").getJsonObject(a);
+                    if(amo.containsKey("after")){
+						String objPhyId = amo.getJsonObject("after").getJsonObject("instanceof").get("id").toString().split(":")[1].replace("\"","");
+					    if(objPhyId.equals(strBOMComponentPhysicalId))
+					    {
+					    	
+					    	String parentConnnectionId = amo.getJsonObject("after").get("id").toString().split(":")[1].replaceAll("\"", "");
+					    	if (UIUtil.isNotNullAndNotEmpty(parentConnnectionId)){
+								setConnectionIdWithParent(parentConnnectionId);
+							}
+					    	
+					    }
+					}
+                    else if(amo.containsKey("before")){
+						String objPhyId = amo.getJsonObject("before").getJsonObject("instanceof").get("id").toString().split(":")[1].replace("\"","");
+					    if(objPhyId.equals(strBOMComponentPhysicalId)){
+					    	
+					    	String parentConnnectionId = amo.getJsonObject("before").get("id").toString().split(":")[1].replaceAll("\"", "");
+					    	if (UIUtil.isNotNullAndNotEmpty(parentConnnectionId)){
+								setConnectionIdWithParent(parentConnnectionId);
+							}
+					    	
+					    }
+					}
+				}
+				//if(IsFound)
+				//	break;
+			}
+			
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+
+	private static void setDatesForDiscreteChild(Context context) throws Exception {
+		try {
+		String strConnectionId = getConnectionIdWithParent();
+		if (UIUtil.isNotNullAndNotEmpty(strConnectionId)){
+			StringList relSelects = new StringList();
+			relSelects.add("attribute[PLMInstance.V_hasConfigEffectivity]");
+			
+			DomainRelationship domRel = new DomainRelationship(strConnectionId);
+			java.util.Hashtable relInfoMap = domRel.getRelationshipData(context, relSelects);
+
+			StringList strlisthasConfigEffectivity = (StringList) relInfoMap.get("attribute[PLMInstance.V_hasConfigEffectivity]");
+			
+			String strhasConfigEffectivity =strlisthasConfigEffectivity.get(0);
+			if ("TRUE".equals(strhasConfigEffectivity)) {
+				String strVariantEffectivity = "";
+				String strEffectivityObject = "";
+				String strDateEffectivity = "";
+				String strCADReleaseDateIn = "";
+				String strCADReleaseDateOut = "";
+				
+				Map<?, ?> mEffectivity = getEffectivity(context, strConnectionId);
+				if (mEffectivity != null) {
+					strEffectivityObject = mEffectivity.toString();
+					if (strEffectivityObject.contains("Effectivity_Current_Evolution:")) {
+						strDateEffectivity = strEffectivityObject.substring(
+								strEffectivityObject.indexOf("Effectivity_Current_Evolution:") + 30,
+								strEffectivityObject.indexOf("]") + 1);
+
+						// To Identify False evolution Effectivity of instance (Delete case)
+						if (strDateEffectivity.contains("false")) {
+							setDiscreteStartDate(getCAStartDate());
+							setDiscreteEndDate(getCAStartDate());
+						} else 
+						{
+							String[] result = strDateEffectivity.split(" - ");
+							if (result.length >= 2) {
+								strCADReleaseDateIn = result[0];
+								strCADReleaseDateIn = strCADReleaseDateIn.substring(13);
+
+								
+								if (strCADReleaseDateIn.length() >= 19)
+									strCADReleaseDateIn = strCADReleaseDateIn.substring(0,
+											strCADReleaseDateIn.length() - 9);
+
+								strCADReleaseDateOut = result[1];
+								strCADReleaseDateOut = strCADReleaseDateOut.substring(0,
+										strCADReleaseDateOut.length() - 1);
+								if (strCADReleaseDateOut.length() >= 19)
+									strCADReleaseDateOut = strCADReleaseDateOut.substring(0,strCADReleaseDateOut.length() - 9);
+							}
+							
+							SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd");
+							SimpleDateFormat format2 = new SimpleDateFormat("MM-dd-yyyy");
+							if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateIn)) 
+							{
+								Date date = format1.parse(strCADReleaseDateIn);
+								String formatDate = format2.format(date);
+								
+								setDiscreteStartDate(formatDate);
+							}
+							else
+								setDiscreteStartDate(" ");
+							
+							if (UIUtil.isNotNullAndNotEmpty(strCADReleaseDateOut)) {
+
+								if (strCADReleaseDateOut.equals("INF")) {
+									strCADReleaseDateOut = "12-31-9999";
+									setDiscreteEndDate(strCADReleaseDateOut);
+								} else {
+									// Single day active in PLM case ::: In JSON { "Start Date": start date of
+									// effectivity and "End Date" = next day date }
+									String formatDate ="";
+									if (strCADReleaseDateOut.equals(strCADReleaseDateIn)) {
+										String dt = strCADReleaseDateOut; // Start date
+										SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+										Calendar c = Calendar.getInstance();
+										c.setTime(sdf.parse(dt));
+										c.add(Calendar.DATE, 1); // number of days to add
+										dt = sdf.format(c.getTime()); // dt is now the new date
+										Date date = format1.parse(dt);
+										formatDate = format2.format(date);
+
+									} else {
+										Date date = format1.parse(strCADReleaseDateOut);
+										formatDate = format2.format(date);
+									}
+									
+									setDiscreteEndDate(formatDate);
+								}
+							} else
+								setDiscreteEndDate(" ");
+								
+						}
+					}
+				}
+			}
+		}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	/***
